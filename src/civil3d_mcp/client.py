@@ -116,11 +116,17 @@ class Civil3DClient:
     # ------------------------------------------------------------------
 
     # Civil 3D ProgIDs in order of preference.
+    #
+    # 2026-08-06 수정: 원본 저장소는 Civil 3D 2026을 "14.4"로 표기했으나,
+    # 실제 등록된 ProgID는 "13.8"이다(레지스트리 HKCR 조회로 확인).
+    # 이 오류 때문에 Civil 3D 2026에서 GetInterfaceObject가 전부 실패하고
+    # 일반 AutoCAD로 폴백되어 Surfaces 컬렉션에 접근할 수 없었다.
     _CIVIL3D_PROG_IDS = [
-        "AeccXUiLand.AeccApplication.14.4",  # Civil 3D 2026
-        "AeccXUiLand.AeccApplication.13.7",  # Civil 3D 2025
-        "AeccXUiLand.AeccApplication.14.0",  # Civil 3D 2024
-        "AeccXUiLand.AeccApplication.13.0",  # Civil 3D 2023
+        "AeccXUiLand.AeccApplication.13.8",  # Civil 3D 2026 — HKCR로 검증
+        "AeccXUiLand.AeccApplication.13.7",  # Civil 3D 2025 — HKCR로 검증
+        "AeccXUiLand.AeccApplication.14.4",  # 원본 값(미검증) — 폴백용 유지
+        "AeccXUiLand.AeccApplication.14.0",  # 원본 값(미검증) — 폴백용 유지
+        "AeccXUiLand.AeccApplication.13.0",  # 원본 값(미검증) — 폴백용 유지
     ]
 
     def connect(self) -> None:
@@ -689,6 +695,11 @@ class Civil3DClient:
         if civil_doc is not self._doc:
             docs_to_try.append(civil_doc)
 
+        # 2026-08-06 추가: 컬렉션 접근 자체가 성공했는지를 별도로 기록한다.
+        # (원본은 "서피스 0개"와 "컬렉션 접근 실패"를 구분하지 못해,
+        #  빈 도면에서도 "Civil 3D가 아닌 AutoCAD가 실행 중"이라는 잘못된
+        #  오류를 냈다.)
+        collection_found = False
         for doc in docs_to_try:
             col = getattr(doc, "Surfaces", None)
             if col is None:
@@ -696,6 +707,7 @@ class Civil3DClient:
             count = 0
             try:
                 count = int(col.Count)
+                collection_found = True
             except Exception:
                 pass
             log.debug("_get_surfaces: Surfaces.Count=%d from doc %r", count, doc)
@@ -733,6 +745,10 @@ class Civil3DClient:
             log.warning("Surface model-space scan failed: %s", exc)
 
         if not results:
+            if collection_found:
+                # 컬렉션은 정상 접근됐고 단지 서피스가 없는 상태 — 정상이며 오류가 아니다.
+                log.info("Surfaces collection accessible but empty (0 surfaces).")
+                return []
             raise Civil3DError(
                 "Surfaces collection not found. "
                 "Ensure Civil 3D (not plain AutoCAD) is running."
