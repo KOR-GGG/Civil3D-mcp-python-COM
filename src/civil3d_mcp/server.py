@@ -21,7 +21,10 @@ from typing import AsyncIterator, Callable, Any
 from mcp.server.fastmcp import FastMCP
 
 from .client import Civil3DClient, Civil3DError
-from . import tools_drawing, tools_cogo, tools_lines, tools_surfaces, tools_alignments, tools_corridors
+from . import (
+    tools_drawing, tools_cogo, tools_lines, tools_surfaces,
+    tools_alignments, tools_corridors, tools_earthwork,
+)
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -84,7 +87,13 @@ async def lifespan(server: FastMCP) -> AsyncIterator[None]:
     loop = asyncio.get_event_loop()
     try:
         await loop.run_in_executor(_executor, client.connect)
-        log.info("civil3d-mcp ready  |  19 tools registered")
+        # 등록 도구 수는 세어서 출력한다. 원본은 "19 tools registered"가
+        # 하드코딩되어 있어 도구를 추가해도 갱신되지 않았다.
+        try:
+            log.info("civil3d-mcp ready  |  %d tools registered",
+                     len(await mcp.list_tools()))
+        except Exception:  # noqa: BLE001
+            log.info("civil3d-mcp ready")
     except Civil3DError as exc:
         log.error("Could not connect to Civil 3D: %s", exc)
         log.error(
@@ -122,6 +131,7 @@ tools_lines.register(mcp, client, run_com)
 tools_surfaces.register(mcp, client, run_com)
 tools_alignments.register(mcp, client, run_com)
 tools_corridors.register(mcp, client, run_com)
+tools_earthwork.register(mcp, client, run_com)
 
 
 # ---------------------------------------------------------------------------

@@ -110,6 +110,9 @@ class Civil3DClient:
         self._civil: Any = None      # AeccApplication COM object (Civil 3D layer)
         self._doc: Any = None        # AeccDocument (Civil 3D) or AcadDocument fallback
         self._connected = False
+        # ProgID that actually succeeded in connect(); its version suffix is
+        # reused to instantiate other AeccXLand coclasses (creation-data objects).
+        self._prog_id: str | None = None
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -171,6 +174,7 @@ class Civil3DClient:
                 if civil is not None:
                     self._civil = civil
                     self._doc = civil.ActiveDocument
+                    self._prog_id = prog_id
                     log.info("Civil 3D interface acquired via GetInterfaceObject(%s)", prog_id)
                     break
             except Exception:
@@ -840,7 +844,175 @@ class Civil3DClient:
                 return surf
         raise Civil3DError(f"Surface '{name}' not found in the active drawing.")
 
-    
+    # ------------------------------------------------------------------
+    # Volume between surfaces  (신규 2026-08-13)
+    #
+    # 기반 저장소에는 서피스 '읽기' 도구만 있고 두 서피스 사이의 체적을
+    # 계산하는 연산이 없었다. 이 메서드가 그 공백을 메우며, 상위 도메인
+    # 도구(compute_earthwork_by_rock_quality)가 호출하는 프리미티브다.
+    # ------------------------------------------------------------------
+
+    # AeccXLand coclass 버전 접미사. connect()에서 성공한 ProgID의 접미사를
+    # 최우선으로 쓰고, 나머지는 폴백.
+    _AECC_LAND_VERSIONS = ["13.8", "13.7", "14.4", "14.0", "13.0"]
+
+    def _aecc_versions_to_try(self) -> list[str]:
+        versions: list[str] = []
+        if self._prog_id:
+            tail = self._prog_id.rsplit(".", 2)[-2:]
+            if len(tail) == 2:
+                versions.append(".".join(tail))
+        for ver in self._AECC_LAND_VERSIONS:
+            if ver not in versions:
+                versions.append(ver)
+        return versions
+
+    def _new_aecc_object(self, type_name: str) -> Any:
+        """Instantiate an AeccXLand coclass such as AeccTinVolumeCreationData.
+
+        These coclasses are served by the running Civil 3D process, so they are
+        obtained through acad.GetInterfaceObject() rather than CreateObject().
+        The same pattern is already proven for AeccTinCreationData.
+        """
+        self._ensure_connected()
+        errors: list[str] = []
+        for ver in self._aecc_versions_to_try():
+            prog_id = f"AeccXLand.{type_name}.{ver}"
+            try:
+                obj = self._acad.GetInterfaceObject(prog_id)
+                if obj is not None:
+                    log.debug("Instantiated %s", prog_id)
+                    return obj
+            except Exception as exc:  # noqa: BLE001
+                errors.append(f"{prog_id} -> {exc}")
+        raise Civil3DError(
+            f"Could not instantiate AeccXLand.{type_name}. "
+            f"Tried {len(errors)} ProgIDs; first failures: " + " | ".join(errors[:3])
+        )
+
+    def compute_volume_between_surfaces(
+        self,
+        base_surface: str,
+        comparison_surface: str,
+        boundary: str | None = None,
+    ) -> dict[str, Any]:
+        """Cut / fill / net volume between two TIN surfaces.
+
+        A TIN volume surface is created temporarily, its statistics are read,
+        and it is erased again so the drawing is left unchanged.
+
+        Sign convention (Civil 3D): the volume surface represents
+        ``comparison - base``.  With base = existing ground and comparison =
+        design (corridor datum), CutVolume is the material to be removed.
+
+        The computation covers the *overlap* of the two surfaces.  When the
+        design surface is a corridor datum surface its own extent already
+        limits the region to the graded area plus its slopes, which is the
+        intended region for earthwork quantities.
+        """
+        import time
+
+        self._ensure_connected()
+        if base_surface.strip().lower() == comparison_surface.strip().lower():
+            raise Civil3DError(
+                "base_surface and comparison_surface must be different surfaces."
+            )
+        if boundary:
+            raise Civil3DError(
+                "Explicit boundary clipping is not implemented yet. "
+                "Re-issue the call without 'boundary': the overlap of the two "
+                "surfaces already limits the computation, and for a corridor "
+                "datum design surface that overlap is the graded area plus its "
+                "slopes. Passing a boundary is rejected rather than silently "
+                "ignored, because ignoring it would return a systematically "
+                "wrong number."
+            )
+
+        started = time.perf_counter()
+        base = self._find_surface(base_surface)
+        comp = self._find_surface(comparison_surface)
+
+        # 스타일은 필수 입력이며 이름이 템플릿·로케일에 따라 다르다.
+        # 기존 서피스의 스타일을 재사용하는 것이 가장 안전하다.
+        style_name = ""
+        for cand in (base, comp):
+            try:
+                style_name = str(cand.StyleName)
+                if style_name:
+                    break
+            except Exception:  # noqa: BLE001
+                continue
+
+        layer_name = "0"
+        try:
+            layer_name = str(base.Layer) or "0"
+        except Exception:  # noqa: BLE001
+            pass
+
+        temp_name = f"__mcp_vol_{int(time.time() * 1000) % 100_000_000}"
+        vol_surface = None
+        cut = fill = net = 0.0
+        area_2d: float | None = None
+
+        try:
+            data = self._new_aecc_object("AeccTinVolumeCreationData")
+            data.Name = temp_name
+            data.Description = "temporary volume surface created by civil3d-mcp"
+            data.Layer = layer_name
+            data.BaseLayer = layer_name
+            if style_name:
+                try:
+                    data.Style = style_name
+                except Exception as exc:  # noqa: BLE001
+                    log.warning("Could not set volume surface style '%s': %s",
+                                style_name, exc)
+            data.BaseSurface = base
+            data.ComparisonSurface = comp
+
+            vol_surface = self._doc.Surfaces.AddTinVolumeSurface(data)
+
+            stats = vol_surface.Statistics
+            cut = float(stats.CutVolume)
+            fill = float(stats.FillVolume)
+            net = float(stats.NetVolume)
+            try:
+                area_2d = float(stats.Area2d)
+            except Exception:  # noqa: BLE001
+                pass
+        except Civil3DError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            raise Civil3DError(
+                f"compute_volume_between_surfaces failed for "
+                f"('{base_surface}' -> '{comparison_surface}'): {exc}"
+            ) from exc
+        finally:
+            # 도면 오염 방지 — 실패 경로에서도 임시 객체를 남기지 않는다.
+            if vol_surface is not None:
+                try:
+                    vol_surface.Erase()
+                except Exception as exc:  # noqa: BLE001
+                    log.warning(
+                        "Temporary volume surface '%s' could not be erased "
+                        "and remains in the drawing: %s", temp_name, exc,
+                    )
+
+        result: dict[str, Any] = {
+            "surface_pair": {
+                "base": str(base.Name),
+                "comparison": str(comp.Name),
+            },
+            "cut_m3": cut,
+            "fill_m3": fill,
+            "net_m3": net,
+            "boundary_applied": False,
+            "region": "overlap of the two surfaces",
+            "elapsed_ms": int((time.perf_counter() - started) * 1000),
+        }
+        if area_2d is not None:
+            result["bounded_area_m2"] = area_2d
+        return result
+
     def list_surface_definition(self, surface_name: str) -> dict[str, Any]:
         """List all definition items for a surface.
 
