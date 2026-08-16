@@ -23,3 +23,6 @@ venv/
 _golden/
 *.dwg
 *.bak
+
+# 조사 스크립트가 남기는 출력 — 실행할 때마다 바뀌므로 추적하지 않는다
+surf_api_out.txt

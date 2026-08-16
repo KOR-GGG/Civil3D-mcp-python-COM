@@ -1,3 +1,23 @@
+"""probe_surf_api.py — Civil 3D 서피스 API 조사 스크립트 (테스트 아님)
+
+⚠⚠ **이 파일은 원래 `test_surf_api.py` 라는 이름이었고, 그것이 위험했다.**
+
+이 스크립트는 pytest 테스트가 아니라 **모듈 최상위에서 곧바로 실행되는 조사
+코드**다. 그런데 이름이 `test_` 로 시작해 **pytest 가 수집하여 import 시점에
+실행**했다. 그 결과 `pytest` 를 한 번 돌리는 것만으로
+
+  · 실행 중인 Civil 3D 에 접속하고
+  · **열려 있는 도면에 TIN 서피스(`__FullWorkflowTest__`)를 생성**하며
+  · 작업 디렉터리에 `surf_api_out.txt` 를 덮어썼다.
+
+즉 **테스트 수트를 돌리면 사용자의 열린 도면이 변경된다.** 검증 도면 원본을
+열어 둔 채 pytest 를 돌리면 원본이 오염되므로, 원본 보호 수칙과 정면으로
+충돌한다. (2026-08-17 확인. 이 랩탑에서는 ProgID 13.7 이 등록되어 있지 않아
+예외로 끝나 무해했으나, Civil 3D 2025 가 설치된 환경에서는 실제로 생성된다.)
+
+→ pytest 가 수집하지 않도록 이름을 `probe_` 로 바꾸었다. 실행하려면 직접
+   `python probe_surf_api.py` 로 호출할 것. **반드시 사본 도면에서.**
+"""
 import win32com.client as w32
 import pythoncom
 from civil3d_mcp.client import Civil3DClient

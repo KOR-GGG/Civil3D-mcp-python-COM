@@ -1,1 +1,0 @@
-TOP ERR: (-2147352567, '예외가 발생했습니다.', (0, 'Autodesk Civil 3D 2024', '응용프로그램을 로드하는 중에 문제 발생', 'C:\\Program Files\\Autodesk\\AutoCAD 2024\\HELP\\OLE_ERR.CHM', -2145320882, -2147221005), None)
