@@ -44,15 +44,19 @@ C. 층서 관통 — 암질별 분할 능력 (실제 검증 도면으로는 확�
 
 사용법
 ------
-    .\.venv\Scripts\python.exe make_test_surfaces.py            # A B C 전부
+    .\.venv\Scripts\python.exe make_test_surfaces.py            # 전 케이스
     .\.venv\Scripts\python.exe make_test_surfaces.py C          # 일부만
+    .\.venv\Scripts\python.exe make_test_surfaces.py E --new    # 새 도면에 환경 2
     .\.venv\Scripts\python.exe make_test_surfaces.py --clean    # 시험 서피스 삭제
 
 주의: 반드시 **비어 있는 새 도면**에서 실행할 것. 실무 도면에 서피스를 추가한다.
 """
 from __future__ import annotations
 
+import glob
+import os
 import sys
+import time
 
 import pythoncom
 import win32com.client as w32
@@ -66,8 +70,8 @@ GRID = 5                              # 격자 분할 수 (평면이므로 정�
 
 PREFIX = "TEST_"
 
-# 이름 -> (표고 함수, 설명)
-CASES: dict[str, list[tuple[str, object, str]]] = {
+# 이름 -> (표고 함수, 설명) [, (x0, x1, y0, y1) 로 외곽 범위를 달리 지정]
+CASES: dict[str, list[tuple]] = {
     "A": [
         ("TEST_A_BASE", lambda x, y: 100.0, "flat EL100 (base)"),
         ("TEST_A_COMP", lambda x, y: 90.0, "flat EL90 (comparison)"),
@@ -83,6 +87,48 @@ CASES: dict[str, list[tuple[str, object, str]]] = {
         ("TEST_C_S3_SOFT",     lambda x, y: 90.0,  "bottom of soft rock EL90"),
         ("TEST_C_DESIGN",      lambda x, y: 88.0,  "design grade EL88"),
     ],
+    # ------------------------------------------------------------------
+    # E. 환경 2 — C5(스크립트 대 에이전트) 실험용 두 번째 도면
+    #
+    # 지층 구성과 정답은 C와 **완전히 동일**하되, 명명 규칙과 서피스 개수를
+    # 실제 검증 도면(2023 연구성과)의 관행에 맞추어 다르게 두었다.
+    #   · 이름이 TEST_C_* 가 아니라 원지형 / 01토사층(Tin) / 계획부지01 …
+    #   · 시추점 기반 중간 산출물 (점) 서피스가 섞여 있다 — 산정에 쓰면 안 되는
+    #     서피스가 도면에 함께 존재하는 실제 상황의 재현
+    #
+    # 서피스 이름을 하드코딩한 스크립트는 이 도면에서 즉시 실패해야 하고,
+    # 정답이 C와 같으므로 완주했을 때 값의 정오를 바로 판정할 수 있다.
+    # ------------------------------------------------------------------
+    "E": [
+        ("원지형",           lambda x, y: 100.0, "E: original ground EL100"),
+        ("01토사층(Tin)",     lambda x, y: 95.0,  "E: bottom of soil EL95"),
+        ("02풍화암층(Tin)",   lambda x, y: 92.0,  "E: bottom of weathered rock EL92"),
+        ("03연암층(Tin)",     lambda x, y: 90.0,  "E: bottom of soft rock EL90"),
+        ("계획부지01",        lambda x, y: 88.0,  "E: design grade EL88"),
+        # 아래 셋은 산정에 쓰면 안 되는 중간 산출물(시추점 기반). 미끼.
+        ("01토사층(점)",      lambda x, y: 95.0,  "E: DECOY - borehole point surface"),
+        ("02풍화암층(점)",    lambda x, y: 92.0,  "E: DECOY - borehole point surface"),
+        ("03연암층(점)",      lambda x, y: 90.0,  "E: DECOY - borehole point surface"),
+    ],
+    # ------------------------------------------------------------------
+    # P. 교란 케이스 — 오식별 검출률 측정용 (제5장 §4.6.4)
+    #
+    # 도구가 잘못된 입력을 「반려」하는지 보기 위한 서피스다. 값을 내면
+    # 안 되는 입력을 일부러 만든다.
+    # ------------------------------------------------------------------
+    "P": [
+        # P1 층서 역전 — 토사 하면(92)이 풍화암 하면(95)보다 아래
+        ("TEST_P_S0_GROUND",    lambda x, y: 100.0, "P: original ground EL100"),
+        ("TEST_P_S1_SOIL_BAD",  lambda x, y: 92.0,
+         "P1: bottom of soil EL92 - INVERTED (below weathered)"),
+        ("TEST_P_S2_WEATHERED_BAD", lambda x, y: 95.0,
+         "P1: bottom of weathered EL95 - INVERTED (above soil)"),
+        ("TEST_P_DESIGN",       lambda x, y: 88.0, "P: design grade EL88"),
+        # P5 산정 영역 불일치 — 외곽 범위를 x∈[0,85] 로 좁힌 지층면
+        ("TEST_P_NARROW_SOIL",  lambda x, y: 95.0,
+         "P5: bottom of soil EL95 but NARROWER extent (x 0~85)",
+         (0.0, 85.0, 0.0, 100.0)),
+    ],
 }
 
 EXPECTED = {
@@ -90,11 +136,66 @@ EXPECTED = {
     "B": "절토  25,000.00 / 성토 25,000.00  (net = 0)",
     "C": "토사 50,000.00 / 풍화암 30,000.00 / 연암 20,000.00 / 경암 20,000.00"
          "  합계 120,000.00 / 성토 0.00",
+    "P": "교란 케이스 — 값이 나오면 안 된다(반려 기대). 제5장 §4.6.4",
+    "E": "환경 2 — C와 같은 지층 구성이나 **명명 규칙과 서피스 개수가 다르다**."
+         " 정답은 C와 동일(토사 50,000 / 풍화암 30,000 / 연암 20,000 / 경암 20,000)",
 }
 
 
-def connect(prog: str = "13.6"):
+def _civil_template() -> str | None:
+    """Civil 3D 미터 템플릿(.dwt) 경로를 찾는다. 없으면 None.
+
+    ⚠ 일반 acad.dwt 로 만든 도면에는 **서피스 스타일이 없어** AddTinSurface 가
+    실패한다. 반드시 Civil 3D 템플릿이어야 한다.
+    """
+    root = os.path.expandvars(r"%LOCALAPPDATA%\Autodesk")
+    hits = glob.glob(os.path.join(root, "C3D*", "*", "Template",
+                                  "_Autodesk Civil 3D (Metric)*.dwt"))
+    return hits[0] if hits else None
+
+
+RPC_E_CALL_REJECTED = -2147418111
+
+
+def _wait_ready(timeout_s: float = 120.0):
+    """Civil 3D 가 COM 호출을 받을 때까지 기다린다.
+
+    반환: (재취득한 Application 객체, 활성 도면 이름)
+
+    ⚠ 도면을 여는 동안 두 가지 증상이 모두 나타난다.
+      · RPC_E_CALL_REJECTED (-2147418111) "피호출자가 호출을 거부했습니다"
+      · AttributeError — 앱이 바쁜 사이 win32com 의 동적 디스패치가
+        타입 정보를 얻지 못해 ActiveDocument 를 아예 못 찾는 상태
+    후자 때문에 **기존 핸들을 재사용하면 안 되고 앱 객체를 다시 잡아야** 한다.
+    """
+    deadline = time.time() + timeout_s
+    last = None
+    while time.time() < deadline:
+        try:
+            app = w32.GetActiveObject("AutoCAD.Application")
+            return app, str(app.ActiveDocument.Name)
+        except Exception as exc:                                # noqa: BLE001
+            last = exc
+            time.sleep(0.5)
+    raise SystemExit(f"Civil 3D 가 {timeout_s}초 안에 준비되지 않았다: {last}")
+
+
+def connect(prog: str = "13.6", new_drawing: bool = False):
     acad = w32.GetActiveObject("AutoCAD.Application")
+
+    if new_drawing:
+        tpl = _civil_template()
+        if not tpl:
+            raise SystemExit(
+                "Civil 3D 미터 템플릿(.dwt)을 찾지 못했다. 새 도면을 만들 수 없다."
+            )
+        # Documents.Add 로 만든 도면은 이미 활성 상태다(Activate 메서드 없음).
+        acad.Documents.Add(tpl)
+        print(f"새 도면 생성 — 템플릿: {os.path.basename(tpl)}")
+        # 도면을 여는 동안 COM 호출이 거부되므로 준비될 때까지 기다린다.
+        acad, name = _wait_ready()
+        print(f"  활성 도면: {name}")
+
     civil = None
     for ver in (prog, "13.8", "13.7", "13.6"):
         try:
@@ -108,13 +209,19 @@ def connect(prog: str = "13.6"):
     return acad, civil.ActiveDocument, prog
 
 
-def grid_points(z_fn) -> list[float]:
-    """GRID x GRID 격자를 (x, y, z) 평탄 배열로."""
+def grid_points(z_fn, extent: tuple[float, float, float, float] | None = None
+                ) -> list[float]:
+    """GRID x GRID 격자를 (x, y, z) 평탄 배열로.
+
+    extent 를 주면 그 범위로 서피스를 만든다. 기본 범위와 다르게 두면
+    두 서피스의 겹침 영역이 달라지므로 **산정 영역 불일치**를 재현할 수 있다.
+    """
+    x0, x1, y0, y1 = extent if extent else (X0, X1, Y0, Y1)
     pts: list[float] = []
     for i in range(GRID):
-        x = X0 + (X1 - X0) * i / (GRID - 1)
+        x = x0 + (x1 - x0) * i / (GRID - 1)
         for j in range(GRID):
-            y = Y0 + (Y1 - Y0) * j / (GRID - 1)
+            y = y0 + (y1 - y0) * j / (GRID - 1)
             pts.extend([x, y, float(z_fn(x, y))])
     return pts
 
@@ -129,7 +236,7 @@ def erase_if_exists(cdoc, name: str) -> bool:
 
 
 def make_surface(acad, cdoc, prog: str, style: str,
-                 name: str, z_fn, desc: str):
+                 name: str, z_fn, desc: str, extent=None):
     erase_if_exists(cdoc, name)
     data = acad.GetInterfaceObject(f"AeccXLand.AeccTinCreationData.{prog}")
     data.Name = name
@@ -140,7 +247,7 @@ def make_surface(acad, cdoc, prog: str, style: str,
     surf = cdoc.Surfaces.AddTinSurface(data)
 
     surf.AddPointMultiple(
-        VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, grid_points(z_fn))
+        VARIANT(pythoncom.VT_ARRAY | pythoncom.VT_R8, grid_points(z_fn, extent))
     )
     try:
         surf.Rebuild()
@@ -148,20 +255,23 @@ def make_surface(acad, cdoc, prog: str, style: str,
         print(f"    Rebuild 경고: {exc}")
 
     st = surf.Statistics
-    print(f"    {name:22s} 점 {st.NumberOfPoints:3d} / 삼각형 {st.NumberOfTriangles:3d}"
+    print(f"    {name:26s} 점 {st.NumberOfPoints:3d} / 삼각형 {st.NumberOfTriangles:3d}"
           f" / EL {st.MinElevation:7.2f}~{st.MaxElevation:7.2f}"
           f" / 2D면적 {st.Area2d:10,.2f} m2")
-    if abs(st.Area2d - AREA) > 1e-6:
+    if extent is None and abs(st.Area2d - AREA) > 1e-6:
         print(f"    ⚠ 2D 면적이 기대값 {AREA:,.2f} 와 다르다 — 경계 변수가 생긴다.")
+    if extent is not None:
+        print(f"    ※ 외곽 범위를 일부러 다르게 둔 서피스(교란용)")
     return surf
 
 
 def main() -> int:
     args = [a for a in sys.argv[1:]]
     clean = "--clean" in args
+    new_drawing = "--new" in args
     wanted = [a.upper() for a in args if a.upper() in CASES] or list(CASES)
 
-    acad, cdoc, prog = connect()
+    acad, cdoc, prog = connect(new_drawing=new_drawing)
     print(f"문서: {cdoc.Name}   ProgID 접미사: {prog}   기존 서피스: {cdoc.Surfaces.Count}개")
 
     if clean:
@@ -180,8 +290,10 @@ def main() -> int:
 
     for case in wanted:
         print(f"[시험 {case}]  기대값: {EXPECTED[case]}")
-        for name, z_fn, desc in CASES[case]:
-            make_surface(acad, cdoc, prog, style, name, z_fn, desc)
+        for item in CASES[case]:
+            name, z_fn, desc = item[0], item[1], item[2]
+            extent = item[3] if len(item) > 3 else None
+            make_surface(acad, cdoc, prog, style, name, z_fn, desc, extent)
         print()
 
     print("현재 서피스 목록:")

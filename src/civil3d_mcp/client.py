@@ -1325,6 +1325,23 @@ class Civil3DClient:
         # 하위 호출이 낸 경고(단위 미확정·임시 서피스 잔존)를 삼키지 않는다.
         volume_warnings: list[str] = list(ground_result.get("warnings", []))
 
+        # 명세가 밝힌 전제 — "절토(원지반 > 계획고) 구간 대상" — 를 확인한다.
+        #
+        # 2026-08-17 추가: 이 전제가 명세에는 있으나 코드에는 없었다. 두 서피스를
+        # 뒤바꿔 지정하면 모든 층의 절토량이 0으로 나오는데, 수식 자체는 성립하므로
+        # 오류가 발생하지 않고 **전부 0인 무의미한 결과가 조용히 반환**된다.
+        # 전면 성토 부지가 있을 수 있으므로 반려하지는 않되, 가장 흔한 원인인
+        # 인자 뒤바뀜을 지목해 경고한다.
+        if c_ground <= core.TOL_M3 and total_fill > core.TOL_M3:
+            volume_warnings.append(
+                f"The design surface lies entirely above the ground surface: the cut "
+                f"volume is zero while the fill volume is {total_fill:,.2f} m3, so every "
+                f"stratum will report zero. This tool is specified for the cut region "
+                f"(ground above design). The usual cause is that ground_surface and "
+                f"design_surface were given in the wrong order — check the argument "
+                f"order before using this result."
+            )
+
         # 각 체적이 같은 산정 영역에서 나왔는지 확인하려고 영역을 함께 모은다.
         # 항등식은 Vᵢ 의 정의상 항상 성립하므로 영역 불일치를 잡지 못한다.
         regions: list[tuple[str, dict | None]] = [

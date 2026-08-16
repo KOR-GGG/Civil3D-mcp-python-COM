@@ -1,0 +1,37 @@
+{
+  "arm": "C only",
+  "rows": [
+    {
+      "env": "환경 1 (TEST_C_* 명명)",
+      "drawing": "test_surfaces.dwg",
+      "completed": true,
+      "trace": [
+        "compute_earthwork_by_rock_quality",
+        "select_economic_diameter",
+        "compute_hydraulic_profile"
+      ],
+      "total_cut_m3": 120000.0,
+      "total_earthwork_cost": 1355000000.0,
+      "by_stratum": {
+        "01토사층": 50000.0,
+        "02풍화암층": 30000.0,
+        "03연암층": 20000.0,
+        "경암(최하층 하부)": 20000.0
+      },
+      "selected_diameter_mm": 600,
+      "pressurization_points": 0,
+      "warnings": [
+        "D600 and D700 differ by only 0.55% in total present value. A small change in unit cost or tariff can flip the selection, so treat this as a tie and check the sensitivity before fixing the diameter."
+      ],
+      "elapsed_s": 2.035804099868983
+    },
+    {
+      "env": "환경 2 (원지형/계획부지01 명명 + 미끼)",
+      "drawing": "Drawing5.dwg",
+      "completed": false,
+      "error": "Surface 'TEST_C_S0_GROUND' not found in the active drawing.",
+      "failed_at": "tool call",
+      "elapsed_s": 0.09470180002972484
+    }
+  ]
+}

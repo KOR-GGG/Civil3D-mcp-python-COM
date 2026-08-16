@@ -1,0 +1,109 @@
+{
+  "base_case": {
+    "flow_m3_s": 0.35,
+    "length_m": 4200.0,
+    "candidate_diameters_mm": [
+      300,
+      400,
+      450,
+      500,
+      600,
+      700,
+      800
+    ],
+    "power_tariff_won_per_kwh": 130.0,
+    "pump_efficiency": 0.75,
+    "annual_operating_hours": 8760.0,
+    "discount_rate": 0.045,
+    "service_life_years": 30
+  },
+  "unit_cost": {
+    "300": 330000.0,
+    "400": 430000.0,
+    "450": 480000.0,
+    "500": 550000.0,
+    "600": 690000.0,
+    "700": 860000.0,
+    "800": 1050000.0
+  },
+  "hw_coefficient": 10.666,
+  "selected": 600,
+  "runner_up_margin_pct": 0.5511857098360133,
+  "ranking": [
+    {
+      "diameter_mm": 600,
+      "total_pv": 4206434326.5044065
+    },
+    {
+      "diameter_mm": 700,
+      "total_pv": 4229619591.4057355
+    },
+    {
+      "diameter_mm": 800,
+      "total_pv": 4680223935.321396
+    },
+    {
+      "diameter_mm": 500,
+      "total_pv": 5489542229.385164
+    },
+    {
+      "diameter_mm": 450,
+      "total_pv": 7327333558.373844
+    },
+    {
+      "diameter_mm": 400,
+      "total_pv": 11231759638.22642
+    }
+  ],
+  "thresholds": [
+    {
+      "variable": "전체 건설단가",
+      "down_threshold_pct": -3.2556152343749867,
+      "down_new_diameter": 700,
+      "up_threshold_pct": null,
+      "up_new_diameter": null
+    },
+    {
+      "variable": "D600 단가만",
+      "down_threshold_pct": null,
+      "down_new_diameter": null,
+      "up_threshold_pct": 0.8056640625,
+      "up_new_diameter": 700
+    },
+    {
+      "variable": "D700 단가만 (차순위)",
+      "down_threshold_pct": -0.6494140624999978,
+      "down_new_diameter": 700,
+      "up_threshold_pct": null,
+      "up_new_diameter": null
+    },
+    {
+      "variable": "전력요금",
+      "down_threshold_pct": -68.57666015625,
+      "down_new_diameter": 500,
+      "up_threshold_pct": 3.35693359375,
+      "up_new_diameter": 700
+    },
+    {
+      "variable": "할인율",
+      "down_threshold_pct": -6.185302734375009,
+      "down_new_diameter": 700,
+      "up_threshold_pct": 332.025146484375,
+      "up_new_diameter": 500
+    },
+    {
+      "variable": "연간 가동시간",
+      "down_threshold_pct": -68.57666015625,
+      "down_new_diameter": 500,
+      "up_threshold_pct": null,
+      "up_new_diameter": null
+    },
+    {
+      "variable": "펌프효율",
+      "down_threshold_pct": -3.253173828125,
+      "down_new_diameter": 700,
+      "up_threshold_pct": null,
+      "up_new_diameter": null
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "layer": "tool",
+  "rows": [
+    {
+      "id": "N0",
+      "label": "정상 입력(대조군)",
+      "expected": "정상",
+      "observed": "미검출",
+      "ok": true,
+      "evidence": "total_cut=120,000.00 total_cost=1355000000.0"
+    },
+    {
+      "id": "P1",
+      "label": "층서 역전",
+      "expected": "반려",
+      "observed": "반려",
+      "ok": true,
+      "evidence": "층서 검산에 실패했다. 산정을 중단한다.   - '02풍화암층' 층의 절토량이 음수(-30,000.000000 ㎥)다. C(01토사층)=40,000.000000 < C(02풍화암층)=70,000.000000 — '01토사층'이 '02풍화암층'보다 아래에 있다는 뜻이므로"
+    },
+    {
+      "id": "P2",
+      "label": "지층명 분류 불가",
+      "expected": "반려",
+      "observed": "반려",
+      "ok": true,
+      "evidence": "지층 1건을 분류하지 못했다.   - 지층 '층A'을 시공방법(토사/리핑/발파)으로 분류할 수 없다. 이름에 다음 중 하나가 포함되어야 한다: 토사, 표토, 매립, 사질토, 풍화암, 풍화토, 리핑, ripping, 연암, 보통암, 경암, 발파. 분류를 추측하면 단가가 "
+    },
+    {
+      "id": "P3",
+      "label": "지층명 모호",
+      "expected": "반려",
+      "observed": "반려",
+      "ok": true,
+      "evidence": "지층 1건을 분류하지 못했다.   - 지층 '토사및풍화암혼재층'이 시공방법 ['토사', '리핑'] 에 동시에 해당해 분류가 모호하다. 지층 이름을 하나의 암질만 가리키도록 정리할 것."
+    },
+    {
+      "id": "P4",
+      "label": "원지반/계획고 뒤바꿈",
+      "expected": "경고",
+      "observed": "경고",
+      "ok": true,
+      "evidence": "The design surface lies entirely above the ground surface: the cut volume is zero while the fill volume is 120,000.00 m3, so every stratum will report"
+    },
+    {
+      "id": "P5",
+      "label": "산정 영역 불일치",
+      "expected": "경고",
+      "observed": "경고",
+      "ok": true,
+      "evidence": "'TEST_P_NARROW_SOIL'의 산정 영역이 'TEST_C_S0_GROUND'과 다르다 (max_x 85.000 vs 100.000). 두 값은 서로 다른 영역에서 나온 것이므로 그 차분을 층 물량으로 쓸 수 없다. 항등식은 이 경우에도 성립하므로 이 검사가 없"
+    },
+    {
+      "id": "P6",
+      "label": "단가 누락",
+      "expected": "경고",
+      "observed": "경고",
+      "ok": true,
+      "evidence": "시공방법 ['리핑'] 의 공사비를 산정할 수 없어 총 공사비를 내지 않았다. 해당 지층의 단가를 입력하면 총액이 산출된다. 빠진 항목을 0 으로 두고 합하면 총액이 과소 산정되어 후보지 비교가 뒤집힌다."
+    }
+  ]
+}
