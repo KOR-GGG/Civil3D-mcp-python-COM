@@ -23,7 +23,7 @@ from mcp.server.fastmcp import FastMCP
 from .client import Civil3DClient, Civil3DError
 from . import (
     tools_drawing, tools_cogo, tools_lines, tools_surfaces,
-    tools_alignments, tools_corridors, tools_earthwork,
+    tools_alignments, tools_corridors, tools_earthwork, tools_hydraulics,
 )
 
 # ---------------------------------------------------------------------------
@@ -132,6 +132,8 @@ tools_surfaces.register(mcp, client, run_com)
 tools_alignments.register(mcp, client, run_com)
 tools_corridors.register(mcp, client, run_com)
 tools_earthwork.register(mcp, client, run_com)
+# 계산 전용 도구군 — client·run_com 을 쓰지 않는다(tools_hydraulics 머리말 참조).
+tools_hydraulics.register(mcp, client, run_com)
 
 
 # ---------------------------------------------------------------------------
