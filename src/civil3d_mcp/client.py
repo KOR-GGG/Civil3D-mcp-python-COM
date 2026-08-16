@@ -124,9 +124,16 @@ class Civil3DClient:
     # 실제 등록된 ProgID는 "13.8"이다(레지스트리 HKCR 조회로 확인).
     # 이 오류 때문에 Civil 3D 2026에서 GetInterfaceObject가 전부 실패하고
     # 일반 AutoCAD로 폴백되어 Surfaces 컬렉션에 접근할 수 없었다.
+    #
+    # 2026-08-16 추가: 두 번째 PC(Civil 3D 2024)에서 "13.6"을 확인했다.
+    # 즉 등록 ProgID는 릴리스 연도가 아니라 13.6(2024)·13.7(2025)·13.8(2026)의
+    # 연속된 내부 버전을 따르며, 원본이 표기한 14.x 계열은 확인한 세 버전 중
+    # 어디에도 대응하지 않는다. 원본의 오표기는 2026 한정 사고가 아니라
+    # 버전 표(表) 전체가 실제 등록값과 무관하게 작성된 결과로 보인다.
     _CIVIL3D_PROG_IDS = [
         "AeccXUiLand.AeccApplication.13.8",  # Civil 3D 2026 — HKCR로 검증
         "AeccXUiLand.AeccApplication.13.7",  # Civil 3D 2025 — HKCR로 검증
+        "AeccXUiLand.AeccApplication.13.6",  # Civil 3D 2024 — HKCR로 검증
         "AeccXUiLand.AeccApplication.14.4",  # 원본 값(미검증) — 폴백용 유지
         "AeccXUiLand.AeccApplication.14.0",  # 원본 값(미검증) — 폴백용 유지
         "AeccXUiLand.AeccApplication.13.0",  # 원본 값(미검증) — 폴백용 유지
@@ -726,10 +733,23 @@ class Civil3DClient:
             )
 
         # Fallback: scan model space for TIN/Grid surface entities
-        log.warning(
-            "Civil 3D Surfaces collection inaccessible — "
-            "falling back to model space scan."
-        )
+        #
+        # 2026-08-16 수정: 이 경고는 collection_found 와 무관하게 발생하고 있었다.
+        # 컬렉션에 정상 접근했고 단지 서피스가 0개인 빈 도면에서도
+        # "inaccessible"이라고 보고해, 진단하는 사람을 연결 실패 쪽으로 오도한다.
+        # 반환값은 이미 옳았으므로(빈 리스트) 기능 결함은 아니지만,
+        # 원본 결함 B("서피스 0개"를 "연결 실패"로 오보)와 같은 성격의 오보가
+        # 로그 계층에 남아 있던 것이다. 실제 상태에 따라 문구를 나눈다.
+        if collection_found:
+            log.info(
+                "Surfaces collection accessible but reported 0 surfaces; "
+                "running a model-space scan as a cross-check."
+            )
+        else:
+            log.warning(
+                "Civil 3D Surfaces collection inaccessible — "
+                "falling back to model space scan."
+            )
         results: list[Any] = []
         # ObjectName examples: AeccDbTinSurface, AeccDbGridSurface,
         # AeccDbTinVolumeSurface, AeccDbGridVolumeSurface
@@ -854,7 +874,7 @@ class Civil3DClient:
 
     # AeccXLand coclass 버전 접미사. connect()에서 성공한 ProgID의 접미사를
     # 최우선으로 쓰고, 나머지는 폴백.
-    _AECC_LAND_VERSIONS = ["13.8", "13.7", "14.4", "14.0", "13.0"]
+    _AECC_LAND_VERSIONS = ["13.8", "13.7", "13.6", "14.4", "14.0", "13.0"]
 
     def _aecc_versions_to_try(self) -> list[str]:
         versions: list[str] = []
