@@ -5,17 +5,15 @@
 
 ---
 
-## 0. 준비 (한 번만)
+## 0. 준비 — ✅ 2026-08-17 완료
 
-- [ ] **Claude Desktop 설치** — https://claude.ai/download
-- [ ] 설정 파일은 **이미 만들어 두었다**: `%APPDATA%\Claude\claude_desktop_config.json`
-      → 설치 후 재시작하면 도구 아이콘에 `civil3d-mcp` 가 보여야 한다
-- [ ] **Civil 3D 를 먼저 켠다** (서버가 기동 시점에 붙는다)
-- [ ] 도면 두 개가 `_golden/` 에 있는지 확인
-      - 환경 1: `test_surfaces.dwg`
-      - 환경 2: `test_surfaces_env2.dwg`
+- [x] **Claude Desktop 설치** (Microsoft Store 판 v1.30096.5.0)
+- [x] MCP 서버 등록 — ⚠ Store 앱은 `%APPDATA%\Claude` 가 **아니라** 여기를 읽는다:
+      `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`
+- [x] 연결 확인 — 로그에 `Server started and connected successfully` / `24 tools registered`
+- [x] 도면 두 개가 `_golden/` 에 있음 (`test_surfaces.dwg` · `test_surfaces_env2.dwg`)
 
-### 매 시행 전 순서 — 이 순서를 어기면 엉뚱한 도면을 재게 된다
+### 매 시행 전 순서
 
 ```powershell
 cd C:\Users\bim\source\civil3d-mcp
@@ -23,10 +21,14 @@ cd C:\Users\bim\source\civil3d-mcp
 ```
 
 1. 위 명령이 출력한 **환경 이름이 맞는지 눈으로 확인**
-2. **Claude Desktop 완전 종료** (작업 표시줄 아이콘 우클릭 → 종료. 창만 닫으면 안 된다)
-3. Claude Desktop 다시 시작
-4. **새 대화**를 열고 `PROMPT_D.txt` 내용을 **그대로 붙여넣기**
-5. 붙여넣기 직전에 **스톱워치 시작**, 최종 답변이 끝나면 정지
+2. Claude Desktop 에서 **새 대화**를 열고 `PROMPT_D.txt` 내용을 **그대로 붙여넣기**
+3. 붙여넣기 직전에 **스톱워치 시작**, 최종 답변이 끝나면 정지
+
+> ★ **Claude Desktop 재시작은 필요 없다.** 서버는 매 호출마다 활성 도면을 다시
+> 읽으므로 도면만 바꾸면 된다(2026-08-17 실측 확인). 기동 시점에 고정된다고
+> 보고 절차를 짰으나 사실이 아니었다.
+>
+> ⚠ **시행 중에는 Civil 3D 를 건드리지 말 것** — 도면을 바꾸면 서버가 따라간다.
 
 > ⚠ **시행마다 반드시 새 대화.** 같은 대화에서 두 번째를 돌리면 앞 시행의 답을 보고 하는 것이라 측정이 아니다.
 > ⚠ **프롬프트를 손으로 고치지 말 것.** 한 글자라도 다르면 두 환경 비교가 깨진다.

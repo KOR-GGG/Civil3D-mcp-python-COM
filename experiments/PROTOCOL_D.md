@@ -34,24 +34,43 @@ D 실험은 **이 프로젝트를 도운 대화 세션이 수행해서는 안 �
 
 이 랩탑에는 Claude Desktop이 설치되어 있지 않다. 둘 중 하나를 택한다.
 
-### 안 ⓐ Claude Desktop (간단, 수동)
+### 안 ⓐ Claude Desktop — ✅ 2026-08-17 구성 완료
 
-1. Claude Desktop 설치
-2. `%APPDATA%\Claude\claude_desktop_config.json` 에 아래를 넣는다 (이 PC 기준 경로).
+**★★ 설정 파일 위치에 주의.** 이 PC의 Claude Desktop은 **Microsoft Store 판**(v1.30096.5.0)이고, Store 앱은 샌드박스라 `%APPDATA%\Claude` 를 **읽지 않는다.** 실제 경로는:
+
+```
+%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json
+```
+
+거기에 기존 키(`coworkUserFilesPath`·`preferences`)를 보존하며 `mcpServers` 를 병합했다.
 
 ```json
-{
-  "mcpServers": {
-    "civil3d-mcp": {
-      "command": "C:\\Users\\bim\\source\\civil3d-mcp\\.venv\\Scripts\\civil3d-mcp.exe"
-    }
+"mcpServers": {
+  "civil3d-mcp": {
+    "command": "C:\\Users\\bim\\source\\civil3d-mcp\\.venv\\Scripts\\civil3d-mcp.exe"
   }
 }
 ```
 
-3. Claude Desktop 재시작 → 도구 아이콘에 `civil3d-mcp` 24개가 보이면 정상
+⚠ **BOM 없이 저장할 것.** PowerShell 의 `Out-File -Encoding utf8` 은 BOM을 붙이는데, 그러면 Claude Desktop이 JSON을 파싱하지 못하고 **아무 오류 없이 서버가 안 뜬다.**
 
-> ⚠ **서버는 기동 시점에 Civil 3D에 붙는다.** Civil 3D를 먼저 켜고 대상 도면을 활성화한 뒤 Claude Desktop을 시작할 것. 도면을 바꾸면 서버를 재시작하는 편이 안전하다.
+**연결 확인** — 로그에서 본다(도구 아이콘을 찾는 것보다 확실하다):
+
+```
+%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\logs\mcp.log
+```
+> `Server started and connected successfully` · `civil3d-mcp ready | 24 tools registered`
+
+또는 `Get-Process civil3d-mcp` 로 서버 프로세스 존재를 확인한다.
+
+#### ★ 서버는 활성 도면을 추종한다 (2026-08-17 실측)
+
+서버가 **기동 시점의 도면에 고정된다고 보고** 절차를 짰으나 **사실이 아니었다.** `_ensure_connected` 가 매 호출마다 `ActiveDocument` 를 다시 읽으므로, 도면을 바꾸면 **같은 서버 프로세스가 새 도면을 본다.**
+
+실측: 환경 2에서 기동(서피스 8개) → 서버를 그대로 둔 채 환경 1로 전환 → 같은 서버가 **서피스 14개**를 봄.
+
+- ✅ **환경을 바꿀 때 Claude Desktop 재시작이 불필요하다.** `activate_env.py` 로 도면만 바꾸면 된다
+- ⚠ **시행 중에는 Civil 3D 를 건드리지 말 것** — 도면이 바뀌면 서버가 따라가므로 시행 도중 대상이 바뀔 수 있다
 
 ### 안 ⓑ API 기반 하니스 (권장 — 반복 측정에 유리)
 
