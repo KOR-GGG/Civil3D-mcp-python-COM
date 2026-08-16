@@ -18,3 +18,8 @@ venv/
 
 # OMC ���� ���� ���� (���Ǻ� ���⹰)
 .omc/
+
+# 검증용 시험 도면 — make_test_surfaces.py 로 언제든 재생성 가능하므로 추적하지 않는다
+_golden/
+*.dwg
+*.bak
