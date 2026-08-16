@@ -1,0 +1,85 @@
+{
+  "server": "C:\\Users\\bim\\source\\civil3d-mcp\\.venv\\Scripts\\civil3d-mcp.exe",
+  "initialize": {
+    "elapsed_s": 1.5194767999928445,
+    "serverInfo": {
+      "name": "civil3d-mcp",
+      "version": "1.29.0"
+    },
+    "protocolVersion": "2024-11-05"
+  },
+  "tools": {
+    "count": 24,
+    "new_tools": [
+      "compute_volume_between_surfaces",
+      "compute_earthwork_by_rock_quality",
+      "compute_head_loss",
+      "compute_hydraulic_profile"
+    ],
+    "l2_properties": [
+      "ground_surface",
+      "design_surface",
+      "strata",
+      "boundary",
+      "site_id",
+      "below_lowest_unit_cost"
+    ],
+    "l2_required": [
+      "ground_surface",
+      "design_surface",
+      "strata"
+    ]
+  },
+  "call_pure": {
+    "ok": true,
+    "elapsed_ms": 2.009600168094039,
+    "payload": {
+      "head_loss_m": 15.423401435812346,
+      "hydraulic_gradient": 0.0036722384370981775,
+      "velocity_m_s": 1.2378717796036303,
+      "c_value_applied": 100,
+      "c_value_source": "auto (D <= 700, 표 3-2)",
+      "formula": "hazen_williams",
+      "formula_constants": {
+        "coefficient": 10.666,
+        "flow_exponent": 1.85,
+        "diameter_exponent": -4.87,
+        "c_exponent": -1.85
+      },
+      "excludes": "minor losses (fittings, valves) not included",
+      "elapsed_ms": 0
+    }
+  },
+  "drawing_info": {
+    "name": "Drawing5.dwg",
+    "full_path": "",
+    "saved": false,
+    "insertion_units": "6",
+    "linear_units": "2",
+    "angular_units": "1",
+    "precision": "3",
+    "coordinate_system": "not set"
+  },
+  "call_com": {
+    "elapsed_ms": 478.16689987666905,
+    "surface_count": 8,
+    "surfaces": [
+      "01토사층(Tin)",
+      "01토사층(점)",
+      "02풍화암층(Tin)",
+      "02풍화암층(점)",
+      "03연암층(Tin)",
+      "03연암층(점)",
+      "계획부지01",
+      "원지형"
+    ]
+  },
+  "server_log_tail": [
+    "2026-08-17 00:51:58,244 [INFO] civil3d_mcp: civil3d-mcp starting — connecting to Civil 3D via COM…",
+    "2026-08-17 00:51:58,244 [INFO] civil3d_mcp.client: Connecting to Civil 3D via COM…",
+    "2026-08-17 00:51:58,280 [INFO] civil3d_mcp.client: AutoCAD.Application connected – drawing: Drawing5.dwg",
+    "2026-08-17 00:51:58,308 [INFO] civil3d_mcp.client: Civil 3D interface acquired via GetInterfaceObject(AeccXUiLand.AeccApplication.13.6)",
+    "2026-08-17 00:51:58,521 [INFO] civil3d_mcp.client: Civil 3D client ready – drawing: Drawing5.dwg",
+    "2026-08-17 00:51:59,043 [INFO] civil3d_mcp.client: Civil 3D client disconnected"
+  ]
+}
