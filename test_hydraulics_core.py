@@ -48,8 +48,8 @@ ECON = dict(
 def test_기준사례가_명세_공식대로_계산된다():
     """반증 대상: Hazen-Williams 구현이 틀렸다.
 
-    기대값은 명세 「방법」 칸의 공식(k=10.666, n=1.85)을 그대로 적용한 값이다.
-    ⚠ 명세의 **검산 예시**(15.43)와는 0.04% 다르다 — 아래 시험 참조.
+    기대값은 명세 「방법」 칸의 공식(k=10.666, n=1.85)을 그대로 적용한 값이며,
+    2026-08-16 정정 이후의 명세 예시와도 일치한다(Δh 15.42 / 경사 0.003672).
     """
     r = core.head_loss(Q, 600, L)
     assert r["velocity_m_s"] == pytest.approx(1.23787, abs=1e-5)
@@ -58,27 +58,28 @@ def test_기준사례가_명세_공식대로_계산된다():
     assert r["c_value_applied"] == 100
 
 
-def test_명세_공식과_명세_예시가_어긋난다는_사실을_고정한다():
-    """★ 명세 내부의 불일치를 코드로 못박아 둔다.
+def test_계수는_10_666이며_10_67과_구별된다():
+    """★ 계수 관례를 코드로 못박아 둔다 (2026-08-16 확정).
 
-    「방법」 칸은 계수 **10.666**, 검산 예시(Δh 15.43 / 동수경사 0.003674)는
-    **10.67** 로 계산된 값이다. 차이는 0.04% 로 작지만 **계통 오차**이므로
-    5장에서 result.xlsx 와 대조할 때 그대로 남는다. 이 시험이 있으면 나중에
-    "왜 우리 값이 명세 예시와 다르지?"를 다시 조사하지 않아도 된다.
+    한때 명세의 「방법」 칸(10.666)과 검산 예시(10.67 로 계산됨)가 어긋나 있었다.
+    저자 확인 결과 기준 산출물 result.xlsx 가 **10.666** 이므로 「방법」 칸이 옳고
+    예시가 틀렸던 것이며, 명세의 예시 수치는 정정되었다.
 
-    국제적으로 널리 쓰이는 SI 형태는 10.67·1.852 이고, 10.666·1.85 는 국내
-    실무의 반올림 변형이다. **result.xlsx 가 어느 쪽인지 확인한 뒤 결정할 것.**
+    이 시험은 나중에 누가 "국제 표준형은 10.67·1.852 인데" 하며 바꾸는 것을
+    막는다. 0.04% 는 작아 보이지만 방향이 일정한 계통 오차라, 기준값 대조에서
+    도구가 틀린 것으로 오인되게 만든다.
     """
-    ours = core.head_loss(Q, 600, L)["head_loss_m"]
-    spec_example = 10.67 * 100 ** -1.85 * 0.6 ** -4.87 * Q ** 1.85 * L
+    r = core.head_loss(Q, 600, L)
+    ours = r["head_loss_m"]
+    other_convention = 10.67 * 100 ** -1.85 * 0.6 ** -4.87 * Q ** 1.85 * L
 
+    assert r["formula_constants"]["coefficient"] == 10.666      # ← 확정값
+    assert r["formula_constants"]["flow_exponent"] == 1.85
     assert ours == pytest.approx(15.4234, abs=1e-3)
-    assert spec_example == pytest.approx(15.4292, abs=1e-3)
-    # 예시가 밝힌 동수경사 0.003674 는 10.67 쪽과 일치한다
-    assert spec_example / L == pytest.approx(0.003674, abs=5e-7)
-    assert abs(ours - spec_example) / spec_example < 0.0005   # 0.05% 미만
-    # 그리고 우리 값은 명세가 쓴 상수를 그대로 보고한다(감사 가능성)
-    assert core.head_loss(Q, 600, L)["formula_constants"]["coefficient"] == 10.666
+    assert other_convention == pytest.approx(15.4292, abs=1e-3)
+    # 두 관례의 차이는 0.05% 미만이라 눈으로는 구분되지 않는다.
+    # 그래서 적용 상수를 결과에 실어 보낸다(감사 가능성).
+    assert abs(ours - other_convention) / other_convention < 0.0005
 
 
 def test_관경은_mm로_받아_m로_환산해_계산한다():
@@ -299,9 +300,8 @@ def _profile(**over):
 def test_명세_예시_종단을_재현한다():
     """반증 대상: 동수경사선 전개나 가압 반영이 틀렸다.
 
-    기대값은 명세 「방법」 칸의 공식으로 다시 계산한 값이다. 명세 예시 표와
-    소수 둘째 자리에서 최대 0.01 m 차이가 나는데, 그 출처는 계수 10.666 vs
-    10.67 이며 종단 로직과는 무관하다(위 test_명세_공식과_명세_예시가_어긋난다…).
+    기대값은 명세 「방법」 칸의 공식(k=10.666)으로 계산한 값이며, 2026-08-16
+    정정 이후의 명세 예시 표와 일치한다.
     """
     r = _profile()
     by_station = {s["station"]: s for s in r["stations"]}
@@ -317,11 +317,10 @@ def test_명세_예시_종단을_재현한다():
     assert p["residual_head"] == pytest.approx(36.8194, abs=1e-3)
     assert by_station[4200]["residual_head"] == pytest.approx(26.5766, abs=1e-3)
 
-    # 명세 예시 표와의 차이는 전부 0.01 m 이내여야 한다 — 그보다 크면
-    # 계수 차이가 아니라 종단 로직이 틀린 것이다
-    spec_table = {0: 50.00, 1000: 33.33, 2000: 6.65, 4200: 26.57}
+    # 정정된 명세 예시 표와 소수 둘째 자리까지 일치해야 한다
+    spec_table = {0: 50.00, 1000: 33.33, 2000: 6.66, 4200: 26.58}
     for station, expected in spec_table.items():
-        assert abs(by_station[station]["residual_head"] - expected) <= 0.01
+        assert round(by_station[station]["residual_head"], 2) == expected
 
 
 def test_가압지점과_요약이_규약대로_집계된다():
