@@ -910,11 +910,115 @@ class Civil3DClient:
             f"Tried {len(errors)} ProgIDs; first failures: " + " | ".join(errors[:3])
         )
 
+    # 경계 클립 — 2026-08-16 실측으로 확보한 경로.
+    #
+    # 벤더 문서에는 산정 영역을 한정하는 방법이 없어 미확인으로 남아 있었으나,
+    # 타입 라이브러리를 직접 열람한 결과 볼륨 서피스의 Statistics 에
+    # BoundedVolumes(varPoints, pCut, pFill, pNet) 가 존재했다.
+    #
+    # 실측으로 확인한 호출 조건(문서화된 곳이 없다):
+    #   · 좌표는 반드시 3D (x, y, z). 2D 쌍만 넘기면 COM 예외.
+    #   · 폴리곤을 **명시적으로 닫아야** 한다(첫 점을 끝에 반복).
+    #     열린 폴리곤은 서피스 전체 범위를 덮을 때는 우연히 통과하고
+    #     부분 영역에서만 실패한다 — 즉 시험을 전체 범위로만 하면
+    #     통과한 것처럼 보인다. 가장 위험한 형태의 오류다.
+    #   · SAFEARRAY 는 VT_R8 이어야 한다. VT_VARIANT 배열은 전부 실패.
+    #   · z 값은 결과에 영향이 없다(z=0 과 z=95 가 동일한 값을 반환).
+    #
+    # 검증: 100 m x 100 m, 두 평면 EL 100 / EL 90 (전체 절토 100,000 ㎥)에서
+    # x∈[0,50] 폴리곤을 넘겨 50,000.00 ㎥ 를 얻었다(해석해와 정확히 일치).
+
+    _BOUNDARY_MIN_POINTS = 3
+
+    @staticmethod
+    def _normalize_boundary_points(coords: Any) -> list[float]:
+        """경계 좌표를 BoundedVolumes 가 받는 평탄 3D 배열로 정규화한다."""
+        pts: list[tuple[float, float]] = []
+
+        flat: list[float] = []
+        if isinstance(coords, (list, tuple)) and coords and isinstance(
+            coords[0], (list, tuple)
+        ):
+            for item in coords:
+                if len(item) < 2:
+                    raise Civil3DError(
+                        f"boundary point {item!r} needs at least an x and a y."
+                    )
+                pts.append((float(item[0]), float(item[1])))
+        else:
+            flat = [float(v) for v in coords]
+            if len(flat) % 3 == 0 and len(flat) % 2 != 0:
+                stride = 3
+            elif len(flat) % 2 == 0 and len(flat) % 3 != 0:
+                stride = 2
+            elif len(flat) % 3 == 0:
+                # 6, 12, 18 … 은 양쪽으로 읽히므로 3D 로 본다(더 흔한 형식).
+                stride = 3
+            else:
+                raise Civil3DError(
+                    f"boundary has {len(flat)} numbers, which is not a whole "
+                    f"number of 2D or 3D points."
+                )
+            pts = [(flat[i], flat[i + 1]) for i in range(0, len(flat), stride)]
+
+        if len(pts) >= 2 and pts[0] == pts[-1]:
+            pts = pts[:-1]                      # 중복 폐합점 제거 후 다시 붙인다
+        if len(pts) < Civil3DClient._BOUNDARY_MIN_POINTS:
+            raise Civil3DError(
+                f"boundary needs at least {Civil3DClient._BOUNDARY_MIN_POINTS} "
+                f"distinct points to form a polygon; got {len(pts)}."
+            )
+
+        closed = [*pts, pts[0]]                 # 명시적 폐합 — 생략하면 조용히 틀린다
+        out: list[float] = []
+        for x, y in closed:
+            out.extend([x, y, 0.0])
+        return out
+
+    def _resolve_boundary(self, boundary: Any) -> tuple[list[float], str]:
+        """boundary 인자를 좌표 배열로 바꾼다.
+
+        받는 형태는 둘이다.
+          · 문자열  — 도면 안 폐합 폴리라인의 **핸들**(AutoCAD 엔티티 핸들)
+          · 좌표열  — [[x, y], …] 또는 [x, y, z, x, y, z, …]
+        """
+        if isinstance(boundary, str):
+            handle = boundary.strip()
+            try:
+                acad_doc = self._acad.ActiveDocument
+                ent = acad_doc.HandleToObject(handle)
+            except Exception as exc:  # noqa: BLE001
+                raise Civil3DError(
+                    f"boundary '{handle}' could not be resolved to a drawing "
+                    f"object. Pass the entity handle of a closed polyline, or "
+                    f"pass the vertex coordinates directly: {exc}"
+                ) from exc
+            obj_name = str(getattr(ent, "ObjectName", ""))
+            if "Polyline" not in obj_name:
+                raise Civil3DError(
+                    f"boundary handle '{handle}' refers to a {obj_name}, not a "
+                    f"polyline. The boundary must be a closed polyline."
+                )
+            try:
+                closed_flag = bool(ent.Closed)
+            except Exception:  # noqa: BLE001
+                closed_flag = True
+            if not closed_flag:
+                raise Civil3DError(
+                    f"polyline '{handle}' is not closed. An open boundary would "
+                    f"be silently completed by the API and the clipped region "
+                    f"would not be the one you drew."
+                )
+            coords = list(ent.Coordinates)
+            return self._normalize_boundary_points(coords), f"polyline handle {handle}"
+
+        return self._normalize_boundary_points(boundary), "explicit coordinates"
+
     def compute_volume_between_surfaces(
         self,
         base_surface: str,
         comparison_surface: str,
-        boundary: str | None = None,
+        boundary: Any = None,
     ) -> dict[str, Any]:
         """Cut / fill / net volume between two TIN surfaces.
 
@@ -937,16 +1041,10 @@ class Civil3DClient:
             raise Civil3DError(
                 "base_surface and comparison_surface must be different surfaces."
             )
-        if boundary:
-            raise Civil3DError(
-                "Explicit boundary clipping is not implemented yet. "
-                "Re-issue the call without 'boundary': the overlap of the two "
-                "surfaces already limits the computation, and for a corridor "
-                "datum design surface that overlap is the graded area plus its "
-                "slopes. Passing a boundary is rejected rather than silently "
-                "ignored, because ignoring it would return a systematically "
-                "wrong number."
-            )
+        boundary_points: list[float] | None = None
+        boundary_source = ""
+        if boundary is not None:
+            boundary_points, boundary_source = self._resolve_boundary(boundary)
 
         started = time.perf_counter()
         base = self._find_surface(base_surface)
@@ -973,6 +1071,7 @@ class Civil3DClient:
         vol_surface = None
         cut = fill = net = 0.0
         area_2d: float | None = None
+        bbox: dict[str, float] | None = None
 
         try:
             data = self._new_aecc_object("AeccTinVolumeCreationData")
@@ -992,13 +1091,28 @@ class Civil3DClient:
             vol_surface = self._doc.Surfaces.AddTinVolumeSurface(data)
 
             stats = vol_surface.Statistics
-            cut = float(stats.CutVolume)
-            fill = float(stats.FillVolume)
-            net = float(stats.NetVolume)
+            if boundary_points is None:
+                cut = float(stats.CutVolume)
+                fill = float(stats.FillVolume)
+                net = float(stats.NetVolume)
+            else:
+                arr = w32.VARIANT(
+                    pythoncom.VT_ARRAY | pythoncom.VT_R8, boundary_points
+                )
+                bounded = stats.BoundedVolumes(arr)
+                cut, fill, net = (float(v) for v in bounded[:3])
+
+            # 볼륨 서피스의 Statistics 에는 Area2d 가 없다(실측 확인 2026-08-16).
+            # 일반 TIN 서피스에는 있으나 볼륨 서피스 인터페이스에는 노출되지
+            # 않으므로, 산정 영역은 면적 대신 경계 상자로 보고한다.
             try:
-                area_2d = float(stats.Area2d)
+                bbox = {
+                    "min_x": float(stats.MinX), "min_y": float(stats.MinY),
+                    "max_x": float(stats.MaxX), "max_y": float(stats.MaxY),
+                }
+                area_2d = None
             except Exception:  # noqa: BLE001
-                pass
+                bbox = None
         except Civil3DError:
             raise
         except Exception as exc:  # noqa: BLE001
@@ -1025,12 +1139,217 @@ class Civil3DClient:
             "cut_m3": cut,
             "fill_m3": fill,
             "net_m3": net,
-            "boundary_applied": False,
-            "region": "overlap of the two surfaces",
+            "boundary_applied": boundary_points is not None,
+            "region": (
+                f"clipped to the supplied boundary ({boundary_source})"
+                if boundary_points is not None
+                else "overlap of the two surfaces"
+            ),
             "elapsed_ms": int((time.perf_counter() - started) * 1000),
         }
-        if area_2d is not None:
+        if boundary_points is not None:
+            # 폐합점을 제외한 정점 수와 폴리곤 면적(신발끈 공식)을 함께 돌려준다.
+            xy = [(boundary_points[i], boundary_points[i + 1])
+                  for i in range(0, len(boundary_points), 3)][:-1]
+            shoelace = abs(sum(
+                xy[i][0] * xy[(i + 1) % len(xy)][1]
+                - xy[(i + 1) % len(xy)][0] * xy[i][1]
+                for i in range(len(xy))
+            )) / 2.0
+            result["boundary_vertex_count"] = len(xy)
+            result["bounded_area_m2"] = shoelace
+        elif area_2d is not None:
             result["bounded_area_m2"] = area_2d
+        if bbox is not None:
+            # 볼륨 서피스에는 Area2d 가 없으므로 산정 영역은 경계 상자로 보고한다.
+            # 실제 겹침 영역의 상계이지 그 면적 자체가 아니다.
+            result["region_bbox"] = bbox
+        return result
+
+    # ------------------------------------------------------------------
+    # Earthwork by rock quality  (신규 2026-08-16)
+    #
+    # 2계층 구조의 상위 도메인 도구. compute_volume_between_surfaces 를
+    # 경계면 수(n+1)회 호출하고, 결과를 earthwork_core 의 차분식으로 조합한다.
+    # 이 메서드에는 CAD 조작만 있고 공학 판단은 전부 earthwork_core 에 있다.
+    # ------------------------------------------------------------------
+
+    def compute_earthwork_by_rock_quality(
+        self,
+        ground_surface: str,
+        design_surface: str,
+        strata: list[dict[str, Any]],
+        boundary: str | None = None,
+        site_id: str | None = None,
+        below_lowest_unit_cost: float | None = None,
+    ) -> dict[str, Any]:
+        """암질별 절토량과 공사비를 산정한다.
+
+        ``strata`` 는 상→하로 정렬된 암층 **경계면** 목록이며 각 항목은
+        ``{"name": str, "surface": str, "unit_cost": float | None}`` 이다.
+        경계면이므로 예컨대 '토사층'의 surface 는 *토사층의 하면*이다.
+
+        산정 영역은 두 서피스의 겹침이다. ``design_surface`` 가 코리더 데이텀
+        서피스이면 그 외곽이 이미 조성 부지와 사면을 포함하므로 이것이
+        의도한 영역이다. 부지 경계선으로 클립하면 사면부 물량이 빠져
+        계통적 과소 산정이 된다.
+        """
+        import time
+
+        from . import earthwork_core as core
+
+        self._ensure_connected()
+        started = time.perf_counter()
+
+        if not strata:
+            raise Civil3DError(
+                "strata is empty. Supply the stratum boundary surfaces ordered "
+                "from top to bottom, e.g. "
+                '[{"name": "토사층", "surface": "01토사층(Tin)", "unit_cost": 4500}]'
+            )
+
+        names: list[str] = []
+        surfaces: list[str] = []
+        unit_costs: list[float | None] = []
+        for i, item in enumerate(strata):
+            if not isinstance(item, dict):
+                raise Civil3DError(f"strata[{i}] must be an object, got {type(item).__name__}.")
+            name = item.get("name")
+            surf = item.get("surface")
+            if not name or not surf:
+                raise Civil3DError(
+                    f"strata[{i}] requires both 'name' and 'surface'. Got {item!r}."
+                )
+            names.append(str(name))
+            surfaces.append(str(surf))
+            raw_cost = item.get("unit_cost")
+            unit_costs.append(None if raw_cost is None else float(raw_cost))
+
+        # C(S) 를 얻는다 — 경계면마다 (경계면, 계획고) 조합으로 1회씩.
+        # 성토는 원지반 호출에서 함께 나온다.
+        ground_result = self.compute_volume_between_surfaces(
+            ground_surface, design_surface, boundary
+        )
+        c_ground = float(ground_result["cut_m3"])
+        total_fill = float(ground_result["fill_m3"])
+        area_m2 = ground_result.get("bounded_area_m2")
+
+        # 각 체적이 같은 산정 영역에서 나왔는지 확인하려고 영역을 함께 모은다.
+        # 항등식은 Vᵢ 의 정의상 항상 성립하므로 영역 불일치를 잡지 못한다.
+        regions: list[tuple[str, dict | None]] = [
+            (ground_surface, ground_result.get("region_bbox"))
+        ]
+
+        c_strata: list[float] = []
+        for surf_name in surfaces:
+            r = self.compute_volume_between_surfaces(surf_name, design_surface, boundary)
+            c_strata.append(float(r["cut_m3"]))
+            regions.append((surf_name, r.get("region_bbox")))
+
+        if boundary is not None:
+            # 모든 호출이 같은 폴리곤으로 잘렸으므로 영역은 구조적으로 동일하다.
+            area_warnings: list[str] = []
+            region_basis = "explicit boundary — identical for every call"
+            regions_consistent = True
+        else:
+            area_warnings = core.check_bbox_consistency(regions)
+            region_basis = (
+                "bounding box of each volume surface — detects mismatch, "
+                "does not prove identity"
+            )
+            regions_consistent = not area_warnings
+
+        try:
+            diff = core.differential_volumes(c_ground, names, c_strata)
+        except core.EarthworkError as exc:
+            raise Civil3DError(str(exc)) from exc
+
+        # 단가 부착 — 최하층 하부는 별도 인자로만 받는다.
+        # 연암 단가를 경암에 물려쓰면 총액이 한 방향(과소)으로 틀어지고,
+        # 결과만 보아서는 그것이 '싼 후보지'로 보인다.
+        for layer, cost in zip(diff.layers, unit_costs):
+            layer.unit_cost = cost
+        diff.layers[-1].unit_cost = below_lowest_unit_cost
+
+        by_method = core.aggregate_by_method(diff.layers)
+        cost_total, cost_warnings = core.total_cost(by_method)
+
+        design_elev: float | None = None
+        connection_point: dict[str, float] | None = None
+        try:
+            st = self._find_surface(design_surface).Statistics
+            design_elev = float(st.MeanElevation)
+            connection_point = {
+                "easting": (float(st.MinX) + float(st.MaxX)) / 2.0,
+                "northing": (float(st.MinY) + float(st.MaxY)) / 2.0,
+            }
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not read design surface statistics: %s", exc)
+
+        result: dict[str, Any] = {
+            "site_id": site_id or design_surface,
+            "ground_surface": ground_surface,
+            "design_surface": design_surface,
+            "by_method": by_method,
+            "by_stratum": [
+                {
+                    "name": layer.name,
+                    "method": layer.method,
+                    "cut_m3": layer.cut_m3,
+                    "unit_cost": layer.unit_cost,
+                    "cost": layer.cost,
+                    "assumed": layer.assumed,
+                }
+                for layer in diff.layers
+            ],
+            "total_cut_m3": diff.total_cut_m3,
+            "total_fill_m3": total_fill,
+            "total_earthwork_cost": cost_total,
+            "boundary_applied": boundary is not None,
+            "region": (
+                "clipped to the supplied boundary — every stratum uses the same "
+                "polygon, so the differences are taken over an identical region"
+                if boundary is not None
+                else "overlap of each surface pair with the design surface"
+            ),
+            "identity_check": {
+                "expression": "sum(Vi) + C(Sn) = C(S0)",
+                "left_m3": diff.total_cut_m3,
+                "right_m3": c_ground,
+                "residual_m3": diff.identity_residual_m3,
+                "holds": abs(diff.identity_residual_m3) <= core.TOL_M3,
+                "note": (
+                    "This identity is a structural guarantee, not a data check: "
+                    "each Vi is defined as a difference of design-referenced cut "
+                    "volumes, so the sum telescopes and always closes. It confirms "
+                    "the implementation, not the input. The substantive cross-check "
+                    "is 'area_consistency'."
+                ),
+            },
+            "region_consistency": {
+                "basis": region_basis,
+                "regions": {name: box for name, box in regions},
+                "consistent": regions_consistent,
+            },
+            "assumptions": {
+                "method_mapping": {
+                    name: layer.method
+                    for name, layer in zip(
+                        [layer.name for layer in diff.layers], diff.layers
+                    )
+                },
+                "below_lowest_stratum": diff.layers[-1].name,
+                "below_lowest_is_extrapolated": True,
+            },
+            "warnings": [*area_warnings, *diff.warnings, *cost_warnings],
+            "elapsed_ms": int((time.perf_counter() - started) * 1000),
+        }
+        if design_elev is not None:
+            result["design_elevation_representative_m"] = design_elev
+        if connection_point is not None:
+            result["connection_point"] = connection_point
+        if area_m2 is not None:
+            result["boundary_area_m2"] = area_m2
         return result
 
     def list_surface_definition(self, surface_name: str) -> dict[str, Any]:
