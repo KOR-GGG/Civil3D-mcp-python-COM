@@ -46,7 +46,7 @@ same desktop session. COM `GetActiveObject` only works within the same session.
 Claude Desktop spawns the `civil3d-mcp` process as a child and communicates
 with it over **stdin/stdout** using the [MCP JSON-RPC wire format](https://spec.modelcontextprotocol.io).
 
-Claude sees 21 tools (listed in §5). When the user sends a prompt, Claude
+Claude sees 24 tools (listed in §5). When the user sends a prompt, Claude
 decides which tool(s) to call, sends a `tools/call` request, receives the
 JSON result, and weaves it into its reply.
 
@@ -222,6 +222,14 @@ alignment geometry may be limited.
 | 19 | `get_corridor_info` | tools_corridors | `doc.Corridors` iterator |
 | 20 | `compute_volume_between_surfaces` | tools_earthwork | `Surfaces.AddTinVolumeSurface()` → `Statistics.CutVolume` / `.BoundedVolumes()` → `Erase()` |
 | 21 | `compute_earthwork_by_rock_quality` | tools_earthwork | tool 20 called once per stratum boundary, combined by the differencing rule in `earthwork_core` |
+| 22 | `compute_head_loss` | tools_hydraulics | Hazen-Williams in `hydraulics_core` — **no COM** |
+| 23 | `select_economic_diameter` | tools_hydraulics | tool 22 per candidate + life-cycle cost — **no COM** |
+| 24 | `compute_hydraulic_profile` | tools_hydraulics | tool 22 for the gradient + pressurisation passes — **no COM** |
+
+> Tools 22–24 are the first group that does **not** go through `Civil3DClient`. They
+> perform closed-form calculation, so they neither touch COM nor queue behind the
+> single-STA executor. The layer boundary is drawn by whether a design judgement is
+> involved, not by whether the drawing is read.
 
 ---
 

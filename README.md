@@ -111,7 +111,7 @@ Restart Claude Desktop. The **hammer icon** (🔨) in the toolbar confirms the s
 
 ---
 
-## Available tools (21 total)
+## Available tools (24 total)
 
 ### Drawing
 | Tool | Description |
@@ -147,6 +147,15 @@ Restart Claude Desktop. The **hammer icon** (🔨) in the toolbar confirms the s
 |---|---|
 | `compute_volume_between_surfaces` | Cut / fill / net volume between two TIN surfaces, optionally clipped to a closed polygon. Creates a temporary volume surface and erases it again |
 | `compute_earthwork_by_rock_quality` | Cut volume split by rock quality (soil / ripping / blasting) and the resulting cost, from the existing ground, the design surface and the stratum boundary surfaces |
+
+### Pipeline hydraulics
+*Calculation only — these three do not read the drawing, so they work without Civil 3D running.*
+
+| Tool | Description |
+|---|---|
+| `compute_head_loss` | Head loss, hydraulic gradient and velocity for one reach (Hazen-Williams). Diameter in mm, converted internally |
+| `select_economic_diameter` | Diameter with the lowest construction cost + present value of pumping energy, among candidates inside the allowed velocity range. Returns the full candidate comparison and the reason each excluded diameter was dropped |
+| `compute_hydraulic_profile` | Hydraulic grade line, residual head per station, and the reaches where pressurisation is needed |
 
 ### Alignments & Profiles
 | Tool | Description |
@@ -196,7 +205,11 @@ civil3d-mcp-python/
 │       ├── tools_lines.py        # Tools 7-9:  lines & polylines
 │       ├── tools_surfaces.py     # Tools 10-13: surfaces
 │       ├── tools_alignments.py  # Tools 14-18: alignments & profiles
-│       └── tools_corridors.py   # Tool  19:    corridors
+│       ├── tools_corridors.py   # Tool  19:    corridors
+│       ├── tools_earthwork.py   # Tools 20-21: earthwork volumes
+│       ├── earthwork_core.py    # Earthwork logic, COM-free (unit-testable)
+│       ├── tools_hydraulics.py  # Tools 22-24: pipeline hydraulics
+│       └── hydraulics_core.py   # Hydraulics logic, COM-free (unit-testable)
 ├── tests/
 │   ├── __init__.py
 │   └── test_tools.py             # pytest suite (fully mocked COM)
