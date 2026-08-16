@@ -1,0 +1,73 @@
+{
+  "layer": "tool",
+  "n": 10,
+  "drawing": "test_surfaces.dwg",
+  "commit": "05a6d03",
+  "units": {
+    "insunits": 6,
+    "name": "meter",
+    "scale_to_m": 1.0,
+    "assumed": false
+  },
+  "excluded_keys": [
+    "elapsed_ms"
+  ],
+  "rows": [
+    {
+      "label": "L1 compute_volume_between_surfaces (평면쌍)",
+      "n": 10,
+      "identical": true,
+      "mismatches": [],
+      "elapsed_ms": {
+        "min": 341.0,
+        "max": 449.0,
+        "mean": 368.7,
+        "stdev": 33.24337862224931
+      },
+      "state_preserved": true,
+      "state_sample": "surfaces=14 leftovers=[]"
+    },
+    {
+      "label": "L1 + 경계 클립 (좌표열)",
+      "n": 10,
+      "identical": true,
+      "mismatches": [],
+      "elapsed_ms": {
+        "min": 328.0,
+        "max": 441.0,
+        "mean": 357.6,
+        "stdev": 32.6299112948704
+      },
+      "state_preserved": true,
+      "state_sample": "surfaces=14 leftovers=[]"
+    },
+    {
+      "label": "L2 compute_earthwork_by_rock_quality",
+      "n": 10,
+      "identical": true,
+      "mismatches": [],
+      "elapsed_ms": {
+        "min": 2202.0,
+        "max": 2741.0,
+        "mean": 2340.3,
+        "stdev": 163.04126948584386
+      },
+      "state_preserved": true,
+      "state_sample": "surfaces=14 leftovers=[]"
+    },
+    {
+      "label": "수리 3종 연쇄 (COM 비접근)",
+      "n": 10,
+      "identical": true,
+      "mismatches": [],
+      "elapsed_ms": {
+        "min": 0.038999831303954124,
+        "max": 0.09229988791048527,
+        "mean": 0.048779998905956745,
+        "stdev": 0.01668680335432658
+      },
+      "state_preserved": true,
+      "state_sample": null
+    }
+  ]
+}
