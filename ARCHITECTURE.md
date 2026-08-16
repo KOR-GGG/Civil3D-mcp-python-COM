@@ -46,7 +46,7 @@ same desktop session. COM `GetActiveObject` only works within the same session.
 Claude Desktop spawns the `civil3d-mcp` process as a child and communicates
 with it over **stdin/stdout** using the [MCP JSON-RPC wire format](https://spec.modelcontextprotocol.io).
 
-Claude sees 19 tools (listed in §5). When the user sends a prompt, Claude
+Claude sees 21 tools (listed in §5). When the user sends a prompt, Claude
 decides which tool(s) to call, sends a `tools/call` request, receives the
 JSON result, and weaves it into its reply.
 
@@ -213,13 +213,15 @@ alignment geometry may be limited.
 | 10 | `list_surfaces` | tools_surfaces | `doc.Surfaces` iterator |
 | 11 | `get_surface_info` | tools_surfaces | `surf.Statistics` |
 | 12 | `sample_surface_elevation` | tools_surfaces | `surf.FindElevationAtXY()` |
-| 13 | `list_surface_definition` | tools_surfaces | `surf.DataDefinition` collections |
+| 13 | `list_surface_definition` | tools_surfaces | `surf.PointFiles` / `.Breaklines` / … (the collections hang off the surface itself; `surf.DataDefinition` does not exist in AeccXLand 13.6) |
 | 14 | `list_alignments` | tools_alignments | `doc.AlignmentsSiteless` |
 | 15 | `get_alignment_info` | tools_alignments | `al.Entities` iterator |
 | 16 | `get_station_offset` | tools_alignments | `al.StationOffset()` (out-params) |
 | 17 | `list_profiles` | tools_alignments | `al.Profiles` iterator |
 | 18 | `get_profile_info` | tools_alignments | `al.Profiles` item |
 | 19 | `get_corridor_info` | tools_corridors | `doc.Corridors` iterator |
+| 20 | `compute_volume_between_surfaces` | tools_earthwork | `Surfaces.AddTinVolumeSurface()` → `Statistics.CutVolume` / `.BoundedVolumes()` → `Erase()` |
+| 21 | `compute_earthwork_by_rock_quality` | tools_earthwork | tool 20 called once per stratum boundary, combined by the differencing rule in `earthwork_core` |
 
 ---
 

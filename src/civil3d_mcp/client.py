@@ -910,6 +910,57 @@ class Civil3DClient:
             f"Tried {len(errors)} ProgIDs; first failures: " + " | ".join(errors[:3])
         )
 
+    # 도면 단위 — 2026-08-16 추가.
+    #
+    # 반환 키가 cut_m3 로 ㎥ 를 단정하는데 도면 단위 검사가 없었다. Civil 3D 는
+    # **도면 단위**로 값을 돌려주므로 mm 도면이면 부피가 배율의 세제곱만큼,
+    # 즉 10⁹ 배 어긋난 채 '㎥'라는 이름으로 보고된다. 결과만 보아서는 알 수 없다.
+    #
+    # AutoCAD INSUNITS 코드 → 미터 환산 계수. 실무에서 나올 수 있는 것만 둔다.
+    _INSUNITS_TO_M: dict[int, tuple[float, str]] = {
+        1: (0.0254, "inch"),
+        2: (0.3048, "foot"),
+        3: (1609.344, "mile"),
+        4: (0.001, "millimeter"),
+        5: (0.01, "centimeter"),
+        6: (1.0, "meter"),
+        7: (1000.0, "kilometer"),
+        10: (0.9144, "yard"),
+        14: (0.1, "decimeter"),
+        15: (10.0, "dekameter"),
+        16: (100.0, "hectometer"),
+    }
+
+    def _drawing_length_unit(self) -> dict[str, Any]:
+        """도면의 길이 단위와 미터 환산 계수를 낸다.
+
+        GetVariable("INSUNITS") 가 COM 열거형/문자열로 오는 경우가 있어
+        (2026-08-06 실측 기록) 정수로 명시 정규화한다.
+        """
+        raw: Any = None
+        try:
+            raw = self._doc.GetVariable("INSUNITS")
+        except Exception as exc:  # noqa: BLE001
+            log.warning("INSUNITS could not be read: %s", exc)
+
+        code: int | None = None
+        if raw is not None:
+            try:
+                code = int(str(raw).strip())
+            except (TypeError, ValueError):
+                log.warning("INSUNITS value %r is not an integer", raw)
+
+        if code in self._INSUNITS_TO_M:
+            scale, name = self._INSUNITS_TO_M[code]
+            return {
+                "insunits": code, "name": name,
+                "scale_to_m": scale, "assumed": False,
+            }
+        return {
+            "insunits": code, "name": "unspecified" if code == 0 else "unknown",
+            "scale_to_m": 1.0, "assumed": True,
+        }
+
     # 경계 클립 — 2026-08-16 실측으로 확보한 경로.
     #
     # 벤더 문서에는 산정 영역을 한정하는 방법이 없어 미확인으로 남아 있었으나,
@@ -1046,6 +1097,10 @@ class Civil3DClient:
         if boundary is not None:
             boundary_points, boundary_source = self._resolve_boundary(boundary)
 
+        units = self._drawing_length_unit()
+        vol_scale = units["scale_to_m"] ** 3          # 부피는 배율의 세제곱
+        area_scale = units["scale_to_m"] ** 2
+
         started = time.perf_counter()
         base = self._find_surface(base_surface)
         comp = self._find_surface(comparison_surface)
@@ -1072,6 +1127,8 @@ class Civil3DClient:
         cut = fill = net = 0.0
         area_2d: float | None = None
         bbox: dict[str, float] | None = None
+        erase_ok = True
+        erase_error = ""
 
         try:
             data = self._new_aecc_object("AeccTinVolumeCreationData")
@@ -1121,24 +1178,52 @@ class Civil3DClient:
                 f"('{base_surface}' -> '{comparison_surface}'): {exc}"
             ) from exc
         finally:
-            # 도면 오염 방지 — 실패 경로에서도 임시 객체를 남기지 않는다.
+            # 도면 오염 방지 — 실패 경로에서도 임시 객체를 남기지 않는다(원칙 P4).
+            #
+            # 2026-08-16 수정: 삭제 실패를 로그로만 남기고 호출자에게는 정상
+            # 응답을 주고 있었다. 도면이 조용히 오염되는데 결과만 보아서는
+            # 알 수 없고, 반복 실행의 초기 조건이 같아야 재현성 측정이 성립하므로
+            # 이 사실은 반드시 응답에 나와야 한다.
             if vol_surface is not None:
                 try:
                     vol_surface.Erase()
+                    erase_ok = True
                 except Exception as exc:  # noqa: BLE001
+                    erase_ok = False
+                    erase_error = str(exc)
                     log.warning(
                         "Temporary volume surface '%s' could not be erased "
                         "and remains in the drawing: %s", temp_name, exc,
                     )
+
+        warnings: list[str] = []
+        if units["assumed"]:
+            warnings.append(
+                f"Drawing units are {units['name']} (INSUNITS={units['insunits']}), "
+                f"so the values could not be converted and are reported in drawing "
+                f"units cubed, not cubic metres. Set INSUNITS on the drawing to get "
+                f"a checked conversion. Volume error scales with the cube of the "
+                f"length ratio — a millimetre drawing read as metres is off by 10^9."
+            )
+        if not erase_ok:
+            warnings.append(
+                f"The temporary volume surface '{temp_name}' could not be erased "
+                f"and remains in the drawing: {erase_error}. Delete it before "
+                f"measuring repeatability — repeated runs no longer start from the "
+                f"same drawing state."
+            )
 
         result: dict[str, Any] = {
             "surface_pair": {
                 "base": str(base.Name),
                 "comparison": str(comp.Name),
             },
-            "cut_m3": cut,
-            "fill_m3": fill,
-            "net_m3": net,
+            "cut_m3": cut * vol_scale,
+            "fill_m3": fill * vol_scale,
+            "net_m3": net * vol_scale,
+            "drawing_units": units,
+            "temp_surface_erased": erase_ok,
+            "warnings": warnings,
             "boundary_applied": boundary_points is not None,
             "region": (
                 f"clipped to the supplied boundary ({boundary_source})"
@@ -1157,13 +1242,15 @@ class Civil3DClient:
                 for i in range(len(xy))
             )) / 2.0
             result["boundary_vertex_count"] = len(xy)
-            result["bounded_area_m2"] = shoelace
+            result["bounded_area_m2"] = shoelace * area_scale
         elif area_2d is not None:
-            result["bounded_area_m2"] = area_2d
+            result["bounded_area_m2"] = area_2d * area_scale
         if bbox is not None:
             # 볼륨 서피스에는 Area2d 가 없으므로 산정 영역은 경계 상자로 보고한다.
             # 실제 겹침 영역의 상계이지 그 면적 자체가 아니다.
-            result["region_bbox"] = bbox
+            result["region_bbox"] = {
+                k: v * units["scale_to_m"] for k, v in bbox.items()
+            }
         return result
 
     # ------------------------------------------------------------------
@@ -1233,6 +1320,10 @@ class Civil3DClient:
         c_ground = float(ground_result["cut_m3"])
         total_fill = float(ground_result["fill_m3"])
         area_m2 = ground_result.get("bounded_area_m2")
+        units = ground_result.get("drawing_units", {})
+
+        # 하위 호출이 낸 경고(단위 미확정·임시 서피스 잔존)를 삼키지 않는다.
+        volume_warnings: list[str] = list(ground_result.get("warnings", []))
 
         # 각 체적이 같은 산정 영역에서 나왔는지 확인하려고 영역을 함께 모은다.
         # 항등식은 Vᵢ 의 정의상 항상 성립하므로 영역 불일치를 잡지 못한다.
@@ -1245,6 +1336,9 @@ class Civil3DClient:
             r = self.compute_volume_between_surfaces(surf_name, design_surface, boundary)
             c_strata.append(float(r["cut_m3"]))
             regions.append((surf_name, r.get("region_bbox")))
+            for w in r.get("warnings", []):
+                if w not in volume_warnings:
+                    volume_warnings.append(w)
 
         if boundary is not None:
             # 모든 호출이 같은 폴리곤으로 잘렸으므로 영역은 구조적으로 동일하다.
@@ -1276,12 +1370,13 @@ class Civil3DClient:
 
         design_elev: float | None = None
         connection_point: dict[str, float] | None = None
+        length_scale = float(units.get("scale_to_m", 1.0))
         try:
             st = self._find_surface(design_surface).Statistics
-            design_elev = float(st.MeanElevation)
+            design_elev = float(st.MeanElevation) * length_scale
             connection_point = {
-                "easting": (float(st.MinX) + float(st.MaxX)) / 2.0,
-                "northing": (float(st.MinY) + float(st.MaxY)) / 2.0,
+                "easting": (float(st.MinX) + float(st.MaxX)) / 2.0 * length_scale,
+                "northing": (float(st.MinY) + float(st.MaxY)) / 2.0 * length_scale,
             }
         except Exception as exc:  # noqa: BLE001
             log.warning("Could not read design surface statistics: %s", exc)
@@ -1341,7 +1436,10 @@ class Civil3DClient:
                 "below_lowest_stratum": diff.layers[-1].name,
                 "below_lowest_is_extrapolated": True,
             },
-            "warnings": [*area_warnings, *diff.warnings, *cost_warnings],
+            "drawing_units": units,
+            "warnings": [
+                *volume_warnings, *area_warnings, *diff.warnings, *cost_warnings,
+            ],
             "elapsed_ms": int((time.perf_counter() - started) * 1000),
         }
         if design_elev is not None:
@@ -1363,14 +1461,23 @@ class Civil3DClient:
         surf = self._find_surface(surface_name)
         result: dict[str, Any] = {"surface_name": surface_name, "definitions": {}}
 
-        # Obtain the DataDefinition object — not all surface types expose it.
+        # 2026-08-16 수정: 원본은 surf.DataDefinition 에서 정의 컬렉션을 찾았으나
+        # Civil 3D 2024(AeccXLand 13.6)의 AeccTinSurface 에는 그런 속성이 없다
+        # (타입 라이브러리 직접 열람으로 확인). 정의 컬렉션은 **서피스에 직접**
+        # 달려 있다. 그래서 이 도구는 언제나 definitions={} 와 오류 문자열만
+        # 돌려주고 있었다 — 응답 형식은 멀쩡해서 호출자는 '정의 항목이 없는
+        # 서피스'로 읽게 된다. 두 경로를 모두 시도한다.
+        sources: list[Any] = []
         try:
             defn = surf.DataDefinition
-        except Exception as exc:
-            result["definitions_error"] = (
-                f"DataDefinition not available for this surface type: {exc}"
-            )
-            return result
+            if defn is not None:
+                sources.append(defn)
+        except Exception:  # noqa: BLE001
+            pass
+        sources.append(surf)
+        result["definition_source"] = (
+            "DataDefinition" if len(sources) > 1 else "surface object"
+        )
 
         collection_map = [
             ("Boundaries",     "boundaries"),
@@ -1386,9 +1493,18 @@ class Civil3DClient:
 
         for attr, label in collection_map:
             try:
-                col = getattr(defn, attr, None)
+                col = None
+                for src in sources:
+                    try:
+                        col = getattr(src, attr, None)
+                    except Exception:  # noqa: BLE001
+                        col = None
+                    if col is not None:
+                        break
                 if col is None:
-                    result["definitions"][label] = {"count": 0, "items": []}
+                    # 이 버전의 인터페이스에 없는 컬렉션. '0개'가 아니라
+                    # '이 버전에 없음'으로 구분해 보고한다.
+                    result["definitions"][label] = {"available": False}
                     continue
                 raw_items = self._iter_com_collection(col)
                 items: list[dict[str, Any]] = []

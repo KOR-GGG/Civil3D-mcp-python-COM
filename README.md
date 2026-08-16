@@ -111,7 +111,7 @@ Restart Claude Desktop. The **hammer icon** (🔨) in the toolbar confirms the s
 
 ---
 
-## Available tools (19 total)
+## Available tools (21 total)
 
 ### Drawing
 | Tool | Description |
@@ -141,6 +141,12 @@ Restart Claude Desktop. The **hammer icon** (🔨) in the toolbar confirms the s
 | `get_surface_info` | Detailed stats: point/triangle count, 2D/3D area |
 | `sample_surface_elevation` | Sample elevation at (easting, northing) |
 | `list_surface_definition` | List all definition items (boundaries, breaklines, contours, DEM files, etc.) |
+
+### Earthwork
+| Tool | Description |
+|---|---|
+| `compute_volume_between_surfaces` | Cut / fill / net volume between two TIN surfaces, optionally clipped to a closed polygon. Creates a temporary volume surface and erases it again |
+| `compute_earthwork_by_rock_quality` | Cut volume split by rock quality (soil / ripping / blasting) and the resulting cost, from the existing ground, the design surface and the stratum boundary surfaces |
 
 ### Alignments & Profiles
 | Tool | Description |
