@@ -116,15 +116,55 @@ def check() -> None:
 
 
 def clean() -> None:
-    _, cdoc, _ = _civil()
-    removed = []
-    for i in range(cdoc.Surfaces.Count - 1, -1, -1):
-        s = cdoc.Surfaces.Item(i)
-        if s.Name.startswith(PREFIX):
-            removed.append(s.Name)
-            s.Erase()
-    print("제거:", removed or "없음")
-    print("남은 서피스:", cdoc.Surfaces.Count, "개")
+    """열려 있는 **모든** 도면에서 표식을 제거한다.
+
+    ⚠ 2026-08-17 수정: 이전에는 **활성 도면만** 훑었다. 환경을 바꿔 가며
+    시행하면 앞 환경의 표식이 그 도면에 남고, `clean` 은 상태 파일이 아니라
+    활성 도면을 보므로 그것을 지우지 못한다. 실제로 환경 3 에 `ZZ_PROBE_OKL413`
+    이 고아로 남아 있었다.
+
+    남은 표식은 조용히 다음 시행을 오염시킨다 — 에이전트가 **옛 표식**을
+    언급하면 출처 확인이 성립하지 않는데, 표만 보아서는 알 수 없다.
+    """
+    import win32com.client as w32
+
+    acad = w32.GetActiveObject("AutoCAD.Application")
+    original = str(acad.ActiveDocument.Name)
+    total = []
+
+    for i in range(acad.Documents.Count):
+        doc = acad.Documents.Item(i)
+        doc.Activate()
+        # ⚠ `_civil()` 은 실패를 SystemExit 로 올린다. SystemExit 는 Exception 이
+        #    아니라 BaseException 이므로 `except Exception` 으로는 잡히지 않는다.
+        #    도면 전환 직후에는 인터페이스 획득이 잠시 실패하므로(§5.5.7) 재시도가
+        #    필요하고, 따라서 SystemExit 까지 함께 잡아야 한다.
+        for _ in range(60):
+            try:
+                _, cdoc, _ = _civil()
+                break
+            except (Exception, SystemExit):                     # noqa: BLE001
+                time.sleep(0.4)
+        else:
+            print(f"  ⚠ {doc.Name} 에 접근하지 못했다. 직접 확인할 것.")
+            continue
+
+        removed = []
+        for j in range(cdoc.Surfaces.Count - 1, -1, -1):
+            s = cdoc.Surfaces.Item(j)
+            if s.Name.startswith(PREFIX):
+                removed.append(s.Name)
+                s.Erase()
+        total += removed
+        print(f"  {doc.Name:26s} 제거 {removed or '없음'}  남은 서피스 {cdoc.Surfaces.Count}개")
+
+    # 원래 활성 도면으로 되돌린다
+    for i in range(acad.Documents.Count):
+        if str(acad.Documents.Item(i).Name) == original:
+            acad.Documents.Item(i).Activate()
+            break
+
+    print("제거 합계:", total or "없음")
 
 
 if __name__ == "__main__":
