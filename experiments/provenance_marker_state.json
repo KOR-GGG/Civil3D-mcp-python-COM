@@ -1,7 +1,7 @@
 {
-  "name": "ZZ_PROBE_SPA7J3",
-  "tag": "SPA7J3",
-  "elevation": 542.3,
-  "created_at": "2026-08-17 02:29:22",
-  "drawing": "test_surfaces_env3.dwg"
+  "name": "ZZ_PROBE_BREAV1",
+  "tag": "BREAV1",
+  "elevation": 525.27,
+  "created_at": "2026-08-17 15:29:58",
+  "drawing": "test_surfaces_env2.dwg"
 }

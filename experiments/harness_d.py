@@ -31,7 +31,7 @@
 ----
     .\.venv\Scripts\python.exe experiments\harness_d.py            # 전 환경 n=5
     .\.venv\Scripts\python.exe experiments\harness_d.py --n 1      # 예행 1회
-    .\.venv\Scripts\python.exe experiments\harness_d.py --env 2    # 환경 2만
+    .\.venv\Scripts\python.exe experiments\harness_d.py --env 3    # 환경 3만
 """
 from __future__ import annotations
 
@@ -88,9 +88,18 @@ PROMPT = (
 )
 
 # 환경 식별 — 그 도면에만 있는 서피스 이름(하니스 내부용, 모델에게 가지 않음)
+#
+# ⚠ 2026-08-17 수정: 환경 2 의 마커가 "원지형" 이었는데 환경 3 에도 같은 이름이
+# 있다(환경 3 은 환경 2 의 명명 규칙을 그대로 쓰고 미끼만 바꾼 도면이다).
+# 그대로 두면 환경 2 를 지정해도 환경 3 도면이 잡힐 수 있다. 미끼의 명명이
+# 환경마다 다르므로 그것으로 배타화한다. exp_c5.py 와 같은 수정이다.
 ENVIRONMENTS = {
-    1: {"label": "환경 1 (TEST_C_* 명명)", "marker": "TEST_C_S0_GROUND"},
-    2: {"label": "환경 2 (원지형/계획부지01 명명 + 미끼)", "marker": "원지형"},
+    1: {"label": "환경 1 (TEST_C_* 명명)",
+        "marker": "TEST_C_S0_GROUND", "file": "test_surfaces.dwg"},
+    2: {"label": "환경 2 (원지형/계획부지01 명명 + 미끼)",
+        "marker": "01토사층(점)", "file": "test_surfaces_env2.dwg"},
+    3: {"label": "환경 3 (중립 설명문 · 기하로만 걸러지는 미끼)",
+        "marker": "01토사층-2", "file": "test_surfaces_env3.dwg"},
 }
 
 # 정답 (두 환경 동일) — 판정용
@@ -205,6 +214,34 @@ def to_anthropic_tools(mcp_tools: list[dict]) -> list[dict]:
 # ---------------------------------------------------------------------------
 # 도면 전환
 # ---------------------------------------------------------------------------
+def open_if_needed(filename: str) -> None:
+    """도면이 열려 있지 않으면 연다.
+
+    ⚠ 실측(2026-08-17): 도면을 연달아 열면 두 번째부터 `Documents.Open()` 이
+    `RPC_E_CALL_REJECTED`(-2147418111) 로 거부된다. 5장 §5.5.7 이
+    `Documents.Add()` 에 대해 기록한 것과 같은 현상이므로, 앱 객체 재취득을
+    포함해 재시도한다.
+    """
+    path = REPO / "_golden" / filename
+    acad = w32.GetActiveObject("AutoCAD.Application")
+    for i in range(acad.Documents.Count):
+        if str(acad.Documents.Item(i).Name).lower() == filename.lower():
+            return
+    if not path.exists():
+        raise SystemExit(f"도면 파일이 없다: {path}")
+    deadline = time.time() + 60
+    last = None
+    while time.time() < deadline:
+        try:
+            w32.GetActiveObject("AutoCAD.Application").Documents.Open(str(path))
+            time.sleep(1.5)
+            return
+        except Exception as exc:                                # noqa: BLE001
+            last = exc
+            time.sleep(1.0)
+    raise SystemExit(f"'{filename}' 을 열지 못했다: {last}")
+
+
 def activate_drawing(marker: str) -> str:
     """marker 서피스를 가진 도면을 활성화하고 그 이름을 돌려준다."""
     from civil3d_mcp.client import Civil3DClient
@@ -341,7 +378,7 @@ def score(trace: list[dict]) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=5, help="환경별 반복 횟수")
-    ap.add_argument("--env", type=int, choices=[1, 2], help="한 환경만")
+    ap.add_argument("--env", type=int, choices=[1, 2, 3], help="한 환경만")
     args = ap.parse_args()
 
     if not os.getenv("ANTHROPIC_API_KEY"):
@@ -371,6 +408,7 @@ def main() -> int:
         print("-" * 92)
         print(f"  {env['label']}")
         print("-" * 92)
+        open_if_needed(env["file"])
         drawing = activate_drawing(env["marker"])
         print(f"  활성 도면: {drawing}")
 
