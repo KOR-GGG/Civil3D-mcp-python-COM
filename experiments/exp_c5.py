@@ -49,14 +49,67 @@ from baseline_c_script import run_guarded                      # noqa: E402
 from civil3d_mcp.client import Civil3DClient                   # noqa: E402
 
 # 환경 식별용 — 그 도면에만 있는 서피스 이름
+#
+# ⚠ 2026-08-17 수정: 환경 2 의 마커가 "원지형" 이었는데 환경 3 에도 같은 이름이
+# 있다(환경 3 은 환경 2 의 명명 규칙을 그대로 쓰고 미끼만 바꾼 도면이다).
+# 그대로 두면 먼저 활성화된 쪽이 "환경 2" 를 차지해 두 환경을 구분하지 못한다.
+# 서로 배타적인 이름으로 바꾼다 — 미끼의 명명이 환경마다 다르다.
+#   환경 2 의 미끼: 01토사층(점) …      환경 3 의 미끼: 01토사층-2 …
 ENV_MARKERS = {
     "환경 1 (TEST_C_* 명명)": "TEST_C_S0_GROUND",
-    "환경 2 (원지형/계획부지01 명명 + 미끼)": "원지형",
+    "환경 2 (원지형/계획부지01 명명 + 미끼)": "01토사층(점)",
+    "환경 3 (중립 설명문 · 기하로만 걸러지는 미끼)": "01토사층-2",
+}
+
+# 환경별 도면 파일 — 열려 있지 않으면 여기서 연다
+GOLDEN = Path(__file__).resolve().parents[1] / "_golden"
+ENV_FILES = {
+    "환경 1 (TEST_C_* 명명)": GOLDEN / "test_surfaces.dwg",
+    "환경 2 (원지형/계획부지01 명명 + 미끼)": GOLDEN / "test_surfaces_env2.dwg",
+    "환경 3 (중립 설명문 · 기하로만 걸러지는 미끼)": GOLDEN / "test_surfaces_env3.dwg",
 }
 
 
 def list_documents(acad) -> list:
     return [acad.Documents.Item(i) for i in range(acad.Documents.Count)]
+
+
+def open_missing(acad, found: dict) -> None:
+    """식별되지 않은 환경의 도면을 연다.
+
+    exp_c5 는 '열려 있는 도면' 중에서 환경을 찾으므로, 도면이 닫혀 있으면
+    측정이 통째로 빠진다. 빠진 것을 실패로 적으면 측정이 아니라 착오다.
+    """
+    for label, path in ENV_FILES.items():
+        if label in found:
+            continue
+        if not path.exists():
+            print(f"  ⚠ 도면 파일이 없다: {path}")
+            continue
+        print(f"  {label} 의 도면이 열려 있지 않다 -> 연다: {path.name}")
+        open_with_retry(acad, path)
+
+
+def open_with_retry(acad, path: Path, timeout_s: float = 60.0):
+    """도면을 연다. 앞 도면을 여는 동안 앱이 바빠 호출이 거부되므로 재시도한다.
+
+    ⚠ 실측(2026-08-17): 도면을 연달아 열면 두 번째·세 번째 `Documents.Open()`
+    에서 `RPC_E_CALL_REJECTED`(-2147418111, "피호출자가 호출을 거부했습니다")
+    가 난다. §5.5.7 이 `Documents.Add()` 에 대해 기록한 것과 같은 현상이며,
+    **앱 객체를 다시 잡아야** 회복되는 경우가 있어 재취득까지 함께 재시도한다.
+    """
+    deadline = time.time() + timeout_s
+    last = None
+    while time.time() < deadline:
+        try:
+            acad = w32.GetActiveObject("AutoCAD.Application")   # 핸들 재취득
+            acad.Documents.Open(str(path))
+            time.sleep(1.5)
+            return
+        except Exception as exc:                                # noqa: BLE001
+            last = exc
+            time.sleep(1.0)
+    raise SystemExit(f"'{path.name}' 을 {timeout_s}초 안에 열지 못했다: {last}")
 
 
 def activate(acad, doc) -> str:
@@ -119,6 +172,22 @@ def main() -> int:
                 found[label] = d
                 print(f"  {label:38s} <- {d.Name}  (서피스 {len(names)}개)")
 
+    # 열려 있지 않은 환경이 있으면 도면을 열고 한 번 더 식별한다
+    if [k for k in ENV_MARKERS if k not in found]:
+        print()
+        open_missing(acad, found)
+        print()
+        for d in list_documents(acad):
+            if d in found.values():
+                continue
+            activate(acad, d)
+            c = client_when_ready()
+            names = surfaces_of(c)
+            for label, marker in ENV_MARKERS.items():
+                if marker in names and label not in found:
+                    found[label] = d
+                    print(f"  {label:44s} <- {d.Name}  (서피스 {len(names)}개)")
+
     missing = [k for k in ENV_MARKERS if k not in found]
     if missing:
         print(f"\n  ⚠ 환경을 찾지 못했다: {missing}")
@@ -159,7 +228,7 @@ def main() -> int:
     print(f"  완주 {len(ok)}/{len(rows)} — 성공 {[r['env'] for r in ok]}")
     print(f"                실패 {[r['env'] for r in ng]}")
     print()
-    if len(ok) == 1 and len(ng) == 1:
+    if len(ok) == 1 and len(ng) >= 1:
         print("  → 명제의 전반부가 확인되었다: 지층 구성과 정답이 동일해도")
         print("    **이름과 개수가 달라지면 고정 스크립트는 완주하지 못한다.**")
         print("    실패는 성능 저하가 아니라 첫 도구 호출에서의 즉시 중단이다.")

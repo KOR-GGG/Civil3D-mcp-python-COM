@@ -23,15 +23,23 @@
       "warnings": [
         "D600 and D700 differ by only 0.55% in total present value. A small change in unit cost or tariff can flip the selection, so treat this as a tie and check the sensitivity before fixing the diameter."
       ],
-      "elapsed_s": 2.035804099868983
+      "elapsed_s": 2.794989899999564
     },
     {
       "env": "환경 2 (원지형/계획부지01 명명 + 미끼)",
-      "drawing": "Drawing5.dwg",
+      "drawing": "test_surfaces_env2.dwg",
       "completed": false,
       "error": "Surface 'TEST_C_S0_GROUND' not found in the active drawing.",
       "failed_at": "tool call",
-      "elapsed_s": 0.09470180002972484
+      "elapsed_s": 0.16115450000143028
+    },
+    {
+      "env": "환경 3 (중립 설명문 · 기하로만 걸러지는 미끼)",
+      "drawing": "test_surfaces_env3.dwg",
+      "completed": false,
+      "error": "Surface 'TEST_C_S0_GROUND' not found in the active drawing.",
+      "failed_at": "tool call",
+      "elapsed_s": 0.11725900000055844
     }
   ]
 }
