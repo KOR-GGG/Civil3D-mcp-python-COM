@@ -20,11 +20,14 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "pytest>=7.0",
+    "pytest>=7.4",
     "pytest-asyncio>=0.23",
-    "black",
-    "ruff",
-    "mypy",
+    "black>=24.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    # 2026-08-18: requirements-dev.txt 와 어긋나 있었다. `pip install -e ".[dev]"`
+    # 로는 anthropic 이 빠져 experiments/harness_d.py 가 ImportError 로 죽었다.
+    "anthropic>=0.40",
 ]
 
 [project.scripts]
@@ -35,7 +38,9 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+# 2026-08-18 정정: tests/ 는 존재한 적이 없다. 이 값 때문에 인자 없이 `pytest` 를
+# 실행하면 "file or directory not found: tests" 로 종료돼 78건이 한 건도 돌지 않았다.
+testpaths = ["test_earthwork_core.py", "test_hydraulics_core.py"]
 
 [tool.ruff]
 line-length = 100
