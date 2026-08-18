@@ -174,8 +174,10 @@ def check_civil3d_install() -> CheckResult:
             passed=False,
             detail="No Civil 3D folder found in default paths.",
             fix_hint=(
-                "Install Civil 3D 2023-2025, or set CIVIL3D_BIN_PATH "
-                "in .env to the folder containing AeccDbMgd.dll."
+                "Install Civil 3D 2023-2026, or set CIVIL3D_BIN_PATH to the "
+                "folder containing AeccDbMgd.dll (usually ...\AutoCAD 20xx\C3D). "
+                "2026-08-18: it must be a real environment variable or an entry in "
+                "the Claude Desktop config's env block - the server does NOT read .env."
             ),
         )
     return CheckResult(
@@ -211,8 +213,9 @@ def check_autodesk_dlls() -> CheckResult:
             passed=False,
             detail=f"Missing (searched {len(_CANDIDATE_ROOTS)} folders): {', '.join(missing)}",
             fix_hint=(
-                "Ensure a full Civil 3D installation is present, "
-                "or set CIVIL3D_BIN_PATH to the correct folder."
+                "Ensure a full Civil 3D installation is present, or set "
+                "CIVIL3D_BIN_PATH to the correct folder. Note it must be a real "
+                "environment variable - the server does NOT read .env (2026-08-18)."
             ),
         )
     where = {found[d] for d in _REQUIRED_DLLS}
@@ -270,8 +273,10 @@ def check_civil3d_running() -> CheckResult:
         passed=False,
         detail="Could not connect to a running Civil 3D / AutoCAD instance.",
         fix_hint=(
-            "Open Civil 3D and load a drawing before starting the MCP server. "
-            "This check is optional — the server will retry on first tool call."
+            "Open Civil 3D and load a drawing BEFORE starting the MCP server. "
+            "2026-08-18 correction: the server does NOT retry. client.py's "
+            "_ensure_connected raises instead of reconnecting, so a server started "
+            "without Civil 3D stays broken until you restart it."
         ),
     )
 
