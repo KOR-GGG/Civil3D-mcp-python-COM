@@ -6,3 +6,8 @@ pytest-asyncio>=0.23
 black>=24.0
 ruff>=0.4
 mypy>=1.10
+
+# 2026-08-18 추가: experiments/harness_d.py 의 API 경로에만 필요하다.
+# 어느 requirements 에도 선언돼 있지 않아 그 스크립트가 ImportError 로 죽었다.
+# Claude Desktop 수동 경로만 쓸 거라면 설치하지 않아도 된다.
+anthropic>=0.40
