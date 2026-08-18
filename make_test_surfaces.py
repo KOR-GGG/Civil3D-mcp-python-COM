@@ -353,6 +353,18 @@ def main() -> int:
     acad, cdoc, prog = connect(new_drawing=new_drawing)
     print(f"문서: {cdoc.Name}   ProgID 접미사: {prog}   기존 서피스: {cdoc.Surfaces.Count}개")
 
+    # 2026-08-18 안전장치. --save-as 는 *활성 도면*을 그 경로로 저장한다(SaveAs).
+    # --new 없이 실무 도면이 열린 상태로 실행하면 그 도면에 시험 서피스가 들어가고
+    # 저장 경로까지 _golden 쪽으로 바뀐다. 서피스가 이미 있으면 실무 도면으로 보고 멈춘다.
+    if save_as is not None and not new_drawing and cdoc.Surfaces.Count > 0:
+        print()
+        print("중단 — --save-as 는 활성 도면을 그 경로로 저장한다.")
+        print(f"  활성 도면 : {cdoc.Name}  (서피스 {cdoc.Surfaces.Count}개)")
+        print("  실무 도면일 수 있다. 이대로 진행하면 그 도면에 시험 서피스가 들어가고")
+        print(f"  저장 경로까지 {save_as} 로 바뀐다.")
+        print("  --new 를 붙여 빈 새 도면에서 만들거나, 빈 도면을 연 뒤 다시 실행할 것.")
+        return 2
+
     if clean:
         removed = 0
         for i in range(cdoc.Surfaces.Count - 1, -1, -1):
