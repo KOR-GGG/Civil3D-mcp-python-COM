@@ -52,23 +52,38 @@ cd civil3d-mcp
 #    experiments/activate_env.py and experiments/harness_d.py hardcode
 #    .venv\Scripts\, so any other name breaks the Chapter-5 harnesses.
 py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+
+# NOTE: do not bother with Activate.ps1 - corporate machines often block it via
+# ExecutionPolicy. Call the interpreter directly instead, as every command below
+# does. This is also the form used throughout experiments/.
 
 # 3. Install dependencies (Windows, Python 3.11)
-pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt   # pytest + anthropic
 
-# 4. Install the package in editable mode
-pip install -e .
+# 4. Install the package in editable mode (creates .venv\Scripts\civil3d-mcp.exe)
+.\.venv\Scripts\python.exe -m pip install -e .
 
 # 5. Run the pre-flight environment checker
-python setup_check.py
-# Use --fix to auto-install any missing pip packages:
-python setup_check.py --fix
+.\.venv\Scripts\python.exe setup_check.py
+# "Civil 3D running" and "Claude Desktop config" may fail at this point - that is
+# expected until you start Civil 3D (step 6) and register the server (below).
 
-# 5. (Optional) copy environment config
-copy .env.example .env
-# Edit .env if Civil 3D is not in the default installation path
+# 6. Regenerate the synthetic validation drawings (needs Civil 3D running,
+#    with one empty drawing open). Skip only if you never run experiments/.
+.\.venv\Scripts\python.exe make_test_surfaces.py A B C P --save-as test_surfaces.dwg
+.\.venv\Scripts\python.exe make_test_surfaces.py E --new --save-as test_surfaces_env2.dwg
+.\.venv\Scripts\python.exe make_test_surfaces.py N --new --save-as test_surfaces_env3.dwg
 ```
+
+> **`.env` does not configure the server.** Nothing in `src/` calls `load_dotenv`;
+> `client.py:68` reads the *process* environment. To point the server at a
+> non-default Civil 3D folder, set `CIVIL3D_BIN_PATH` as a real environment
+> variable or in the `env` block of the Claude Desktop config below.
+> `.env` is read only by `experiments/harness_d.py` (for `ANTHROPIC_API_KEY`).
+
+See **[INSTALL.md](INSTALL.md)** for the step-by-step version with verification
+commands and the common failure modes.
 
 ---
 
@@ -76,44 +91,82 @@ copy .env.example .env
 
 ### Claude Desktop
 
-Edit `%APPDATA%\Claude\claude_desktop_config.json` and add:
+Config file location - **check which build you have** (`Get-AppxPackage *Claude*`):
+
+| Build | Path |
+|---|---|
+| Normal installer | `%APPDATA%\Claude\claude_desktop_config.json` |
+| **Microsoft Store** | `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json` |
+
+The Store build is sandboxed and **does not read** `%APPDATA%\Claude` (verified 2026-08-17).
 
 ```json
 {
   "mcpServers": {
     "civil3d-mcp": {
-      "command": "civil3d-mcp"
+      "command": "C:\\Users\\YOURNAME\\source\\civil3d-mcp\\.venv\\Scripts\\civil3d-mcp.exe"
     }
   }
 }
 ```
 
-Or, if you prefer to run without installing the package:
+> **2026-08-18 correction - the absolute path is required.** This section previously
+> offered `"command": "civil3d-mcp"` and a `"command": "python"` variant. **Neither
+> works with the venv install above.** The bare name is not on `PATH` (the exe lives
+> in `.venv\Scripts\` and we never activate the venv), and bare `python` resolves to
+> the system interpreter, which has none of the dependencies. The absolute path to
+> `.venv\Scripts\civil3d-mcp.exe` is the only form observed working.
+>
+> Print your own path with:
+> ```powershell
+> "$env:USERPROFILE\source\civil3d-mcp\.venv\Scripts\civil3d-mcp.exe"
+> ```
+> JSON does not expand environment variables, so this must be edited per machine.
+> Escape every backslash (`\\`) inside JSON.
+
+If Civil 3D is not in a default location, add `CIVIL3D_BIN_PATH` to the `env` block -
+this is one of only two ways the server can actually receive it (see below):
 
 ```json
 {
   "mcpServers": {
     "civil3d-mcp": {
-      "command": "python",
-      "args": ["-m", "civil3d_mcp.server"],
-      "cwd": "C:\\path\\to\\civil3d-mcp-python",
-      "env": {
-        "PYTHONPATH": "C:\\path\\to\\civil3d-mcp-python\\src",
-        "CIVIL3D_BIN_PATH": "C:\\Program Files\\Autodesk\\AutoCAD 2026"
-      }
+      "command": "C:\\Users\\YOURNAME\\source\\civil3d-mcp\\.venv\\Scripts\\civil3d-mcp.exe",
+      "env": { "CIVIL3D_BIN_PATH": "C:\\Program Files\\Autodesk\\AutoCAD 2026\\C3D" }
     }
   }
 }
 ```
 
-Restart Claude Desktop. The **hammer icon** (🔨) in the toolbar confirms the server is connected.
+**Save without a BOM.** PowerShell's `Out-File -Encoding utf8` adds one; Claude Desktop
+then fails to parse the JSON and **the server silently never starts**, with no error
+shown anywhere in the UI. Use `Set-Content -Encoding utf8NoBOM`, or an editor that can
+save UTF-8 without BOM.
+
+Restart Claude Desktop, then confirm from the log rather than by hunting for an icon:
+
+```powershell
+Select-String "Server started and connected successfully" "$env:APPDATA\Claude\logs\mcp*.log" |
+  Select-Object -Last 3
+```
 
 ### Environment variables
 
-| Variable | Default | Purpose |
-|---|---|---|
-| `CIVIL3D_BIN_PATH` | Auto-detected | Path to folder containing `AeccDbMgd.dll` |
-| `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
+| Variable | Default | Purpose | Read by |
+|---|---|---|---|
+| `CIVIL3D_BIN_PATH` | Auto-detected | Folder containing `AeccDbMgd.dll` (usually `...\AutoCAD 20xx\C3D`) | server, via the **process** environment |
+| `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` | server |
+| `ANTHROPIC_API_KEY` | - | Only for `experiments/harness_d.py` | that script, via `.env` |
+
+> **The server never reads `.env`** (corrected 2026-08-18). Nothing under `src/` calls
+> `load_dotenv`; `client.py:68` reads the process environment. So there are exactly two
+> ways to give the server `CIVIL3D_BIN_PATH`:
+> 1. a real environment variable - `$env:CIVIL3D_BIN_PATH = "..."` before launching, or a
+>    user/system variable;
+> 2. the `env` block of the Claude Desktop config (see above).
+>
+> `.env` is loaded only by `experiments/harness_d.py:49,53`, which is why
+> `ANTHROPIC_API_KEY` belongs there and `CIVIL3D_BIN_PATH` effectively does not.
 
 ---
 

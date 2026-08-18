@@ -98,7 +98,7 @@ $f = "$env:LOCALAPPDATA\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\
 "$env:USERPROFILE\source\civil3d-mcp\.venv\Scripts\civil3d-mcp.exe"
 ```
 
-venv 가 PATH 에 있다면 `README.md` 처럼 `"command": "civil3d-mcp"` 만 써도 된다(경로 무관이라 이쪽이 안전하다).
+⚠ **`"command": "civil3d-mcp"` 로 줄여 쓰지 말 것**(2026-08-18 정정 — 같은 날 앞서 이 자리에 그렇게 적었던 것을 취소한다). `civil3d-mcp.exe` 는 `.venv\Scripts\` 에 있고 그 폴더를 PATH 에 넣지 않으므로, Claude Desktop 이 실행 파일을 찾지 못한다. `"command": "python"` 변형도 같은 이유로 안 된다 — 맨 `python` 은 시스템 인터프리터라 의존성이 하나도 없다. **위와 같이 절대경로를 쓰되 사용자명만 자기 것으로 바꾸는 것이 맞다.**
 
 ⚠ **BOM 없이 저장할 것.** PowerShell 의 `Out-File -Encoding utf8` 은 BOM을 붙이는데, 그러면 Claude Desktop이 JSON을 파싱하지 못하고 **아무 오류 없이 서버가 안 뜬다.**
 

@@ -1,24 +1,36 @@
 {
-  "_comment": "Add the block below to your claude_desktop_config.json under 'mcpServers'.",
-  "_location_windows": "%APPDATA%\\Claude\\claude_desktop_config.json",
+  "_comment": "Add the mcpServers block below to your claude_desktop_config.json.",
+
+  "_location_normal_build": "%APPDATA%\\Claude\\claude_desktop_config.json",
+  "_location_microsoft_store": "%LOCALAPPDATA%\\Packages\\Claude_pzs8sxrjxfjjc\\LocalCache\\Roaming\\Claude\\claude_desktop_config.json",
+  "_which_build": "Get-AppxPackage *Claude*  -- if it returns a package you have the Store build, which is sandboxed and does NOT read %APPDATA%\\Claude (verified 2026-08-17).",
+
+  "_2026_08_18_correction": [
+    "This file used to offer two forms and NEITHER works with the documented venv install:",
+    "  (a) \"command\": \"civil3d-mcp\"  -- the exe lives in .venv\\Scripts\\ which is not on PATH;",
+    "  (b) \"command\": \"python\" + cwd/PYTHONPATH -- bare python is the system interpreter and has none of the dependencies.",
+    "Use the absolute path to .venv\\Scripts\\civil3d-mcp.exe. JSON does not expand environment variables, so edit YOURNAME per machine.",
+    "Print your path with:  \"$env:USERPROFILE\\source\\civil3d-mcp\\.venv\\Scripts\\civil3d-mcp.exe\""
+  ],
+
+  "_save_without_bom": "PowerShell 'Out-File -Encoding utf8' adds a BOM; Claude Desktop then fails to parse the JSON and the server SILENTLY never starts. Use Set-Content -Encoding utf8NoBOM.",
+
+  "_verify": "Select-String 'Server started and connected successfully' \"$env:APPDATA\\Claude\\logs\\mcp*.log\" | Select-Object -Last 3",
 
   "mcpServers": {
     "civil3d-mcp": {
-      "command": "python",
-      "args": ["-m", "civil3d_mcp.server"],
-      "cwd": "C:\\path\\to\\civil3d-mcp-python",
-      "env": {
-        "PYTHONPATH": "C:\\path\\to\\civil3d-mcp-python\\src",
-        "CIVIL3D_BIN_PATH": "C:\\Program Files\\Autodesk\\AutoCAD 2024"
-      }
+      "command": "C:\\Users\\YOURNAME\\source\\civil3d-mcp\\.venv\\Scripts\\civil3d-mcp.exe"
     }
   },
 
-  "_alternative_after_pip_install": {
-    "_comment": "If you installed with 'pip install -e .', use this instead:",
+  "_optional_civil3d_bin_path": {
+    "_comment": "Only if Civil 3D is not in a default location. This env block is one of only two ways the server can receive it -- it does NOT read .env.",
     "mcpServers": {
       "civil3d-mcp": {
-        "command": "civil3d-mcp"
+        "command": "C:\\Users\\YOURNAME\\source\\civil3d-mcp\\.venv\\Scripts\\civil3d-mcp.exe",
+        "env": {
+          "CIVIL3D_BIN_PATH": "C:\\Program Files\\Autodesk\\AutoCAD 2026\\C3D"
+        }
       }
     }
   }

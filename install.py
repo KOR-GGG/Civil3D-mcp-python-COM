@@ -4,6 +4,16 @@ install.py  –  civil3d-mcp dependency installer
 Run this script once to set up the full Python environment needed by the
 civil3d-mcp FastMCP server.
 
+⚠ 2026-08-18 — 이 스크립트는 **가상환경을 만들지도, 검출하지도 않는다.**
+아래 :115 가 ``sys.executable`` 로 pip 를 부르므로, 일반 셸에서 ``python install.py``
+를 실행하면 **시스템 Python 에 설치된다.** 반드시 venv 를 먼저 만들고 그 안의
+인터프리터로 실행할 것:
+
+    py -3.11 -m venv .venv
+    .\.venv\Scripts\python.exe install.py --dev --verify
+
+권장 경로는 INSTALL.md 다. 이 스크립트는 그 절차의 4~5단계만 대신한다.
+
 Usage
 -----
     python install.py             # install runtime dependencies only
