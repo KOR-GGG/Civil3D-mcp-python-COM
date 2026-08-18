@@ -138,12 +138,22 @@ def check_pydantic() -> CheckResult:
 
 # --------------- Civil 3D binary paths ---------------
 
+# 2026-08-18 정정: client.py 의 _AUTODESK_ROOTS 와 어긋나 있었다. 실제 DLL 은
+# "AutoCAD 20xx\C3D\" 하위에 있는데 여기서는 상위 폴더만 봐서, Civil 3D 가
+# 정상 설치된 PC 에서도 "Missing ... AeccDbMgd.dll" 로 오탐했다. 2026 도 빠져 있었다.
 _CANDIDATE_ROOTS = [
+    r"C:\Program Files\Autodesk\AutoCAD 2026\C3D",
+    r"C:\Program Files\Autodesk\AutoCAD 2026",
+    r"C:\Program Files\Autodesk\AutoCAD 2025\C3D",
     r"C:\Program Files\Autodesk\AutoCAD 2025",
+    r"C:\Program Files\Autodesk\AutoCAD 2024\C3D",
     r"C:\Program Files\Autodesk\AutoCAD 2024",
     r"C:\Program Files\Autodesk\AutoCAD 2023",
 ]
-_REQUIRED_DLLS = ["AeccDbMgd.dll", "AeccLandMgd.dll", "acdbmgd.dll"]
+# 항상 존재하는 DLL
+_REQUIRED_DLLS = ["AeccDbMgd.dll", "acdbmgd.dll"]
+# Civil 3D 2023/2024 에는 있고 2025+ 에서는 제거된 DLL — 없어도 정상이다.
+_OPTIONAL_DLLS = ["AeccLandMgd.dll"]
 
 
 def _find_civil3d_root() -> str | None:
@@ -183,24 +193,36 @@ def check_autodesk_dlls() -> CheckResult:
             passed=False,
             detail="Civil 3D root not found (see previous check).",
         )
-    missing = [
-        dll for dll in _REQUIRED_DLLS
-        if not Path(root, dll).exists()
-    ]
+    # 2026-08-18 정정: DLL 이 한 폴더에 모여 있다고 가정했으나 실제로는 나뉘어 있다.
+    # AeccDbMgd.dll 은 "AutoCAD 20xx\C3D\", acdbmgd.dll 은 "AutoCAD 20xx\" 에 있다.
+    # client.py 의 _find_dll 처럼 후보 폴더 전체를 DLL 마다 훑는다.
+    def _locate(dll: str) -> str | None:
+        for cand in [root, *_CANDIDATE_ROOTS]:
+            if Path(cand, dll).exists():
+                return cand
+        return None
+
+    found = {dll: _locate(dll) for dll in _REQUIRED_DLLS + _OPTIONAL_DLLS}
+    missing = [d for d in _REQUIRED_DLLS if found[d] is None]
+    absent_optional = [d for d in _OPTIONAL_DLLS if found[d] is None]
     if missing:
         return CheckResult(
             name="Autodesk .NET DLLs",
             passed=False,
-            detail=f"Missing in {root}: {', '.join(missing)}",
+            detail=f"Missing (searched {len(_CANDIDATE_ROOTS)} folders): {', '.join(missing)}",
             fix_hint=(
                 "Ensure a full Civil 3D installation is present, "
                 "or set CIVIL3D_BIN_PATH to the correct folder."
             ),
         )
+    where = {found[d] for d in _REQUIRED_DLLS}
+    detail = "All required found in: " + " + ".join(sorted(where))
+    if absent_optional:
+        detail += f"  (optional, absent in 2025+: {', '.join(absent_optional)})"
     return CheckResult(
         name="Autodesk .NET DLLs",
         passed=True,
-        detail=f"All found in: {root}",
+        detail=detail,
     )
 
 
@@ -218,9 +240,16 @@ def check_civil3d_running() -> CheckResult:
             fix_hint="Install pywin32 first.",
         )
 
+    # 2026-08-18 정정: client.py 의 목록과 어긋나 있었다. 레지스트리(HKCR)로 실제
+    # 확인된 값은 13.8(2026) / 13.7(2025) / 13.6(2024) 이며, 여기에는 그 셋이
+    # 전부 빠져 있어 Civil 3D 가 떠 있어도 AutoCAD.Application 으로만 잡혔다.
     prog_ids = [
-        "AeccXUiLand.AeccApplication.14.0",
-        "AeccXUiLand.AeccApplication.13.0",
+        "AeccXUiLand.AeccApplication.13.8",  # Civil 3D 2026
+        "AeccXUiLand.AeccApplication.13.7",  # Civil 3D 2025
+        "AeccXUiLand.AeccApplication.13.6",  # Civil 3D 2024
+        "AeccXUiLand.AeccApplication.14.4",  # 원본 값(미검증) — 폴백용
+        "AeccXUiLand.AeccApplication.14.0",  # 원본 값(미검증) — 폴백용
+        "AeccXUiLand.AeccApplication.13.0",  # 원본 값(미검증) — 폴백용
         "AutoCAD.Application",
     ]
     for prog_id in prog_ids:
@@ -250,7 +279,15 @@ def check_civil3d_running() -> CheckResult:
 # --------------- Claude Desktop config ---------------
 
 def check_claude_config() -> CheckResult:
-    config_path = Path(os.environ.get("APPDATA", ""), "Claude", "claude_desktop_config.json")
+    # 2026-08-18 정정: %APPDATA%\Claude 만 보고 있었다. Microsoft Store 판은
+    # 샌드박스라 그 경로를 읽지 않는다(2026-08-17 실측). 두 곳을 모두 살핀다.
+    _candidates = [
+        Path(os.environ.get("APPDATA", ""), "Claude", "claude_desktop_config.json"),
+        Path(os.environ.get("LOCALAPPDATA", ""), "Packages",
+             "Claude_pzs8sxrjxfjjc", "LocalCache", "Roaming", "Claude",
+             "claude_desktop_config.json"),
+    ]
+    config_path = next((c for c in _candidates if c.exists()), _candidates[0])
     if not config_path.exists():
         return CheckResult(
             name="Claude Desktop config",
@@ -262,7 +299,10 @@ def check_claude_config() -> CheckResult:
             ),
         )
     try:
-        with open(config_path) as fh:
+        # 2026-08-18 정정: 인코딩을 지정하지 않아 한글 Windows 에서 cp949 로 읽혀
+        # "cp949 codec can't decode" 로 실패했다. 설정 파일은 UTF-8 이며, Claude
+        # Desktop 이 BOM 을 붙여 저장하는 경우가 있어 utf-8-sig 로 읽는다.
+        with open(config_path, encoding="utf-8-sig") as fh:
             cfg = json.load(fh)
         servers = cfg.get("mcpServers", {})
         if "civil3d-mcp" in servers:
@@ -335,6 +375,14 @@ _WARN = "  [WARN]"
 
 
 def run_checks(fix: bool = False, as_json: bool = False) -> int:
+    # 2026-08-18 추가: 한글 Windows 콘솔은 기본이 cp949 라, 아래 머리글의 em-dash
+    # 하나 때문에 UnicodeEncodeError 로 점검을 시작조차 못 하고 죽었다.
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:                                      # noqa: BLE001
+            pass
+
     results: list[CheckResult] = []
 
     if not as_json:
