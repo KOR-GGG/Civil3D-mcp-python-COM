@@ -49,6 +49,16 @@ C. 층서 관통 — 암질별 분할 능력 (실제 검증 도면으로는 확�
     .\.venv\Scripts\python.exe make_test_surfaces.py E --new    # 새 도면에 환경 2
     .\.venv\Scripts\python.exe make_test_surfaces.py --clean    # 시험 서피스 삭제
 
+    # 만든 도면을 파일로 저장한다(경로가 상대면 _golden/ 아래로 해석).
+    .\.venv\Scripts\python.exe make_test_surfaces.py A B C P --save-as test_surfaces.dwg
+    .\.venv\Scripts\python.exe make_test_surfaces.py E --new --save-as test_surfaces_env2.dwg
+    .\.venv\Scripts\python.exe make_test_surfaces.py N --new --save-as test_surfaces_env3.dwg
+
+⚠ 2026-08-18 추가: 예전에는 저장 기능이 없어 **Civil 3D 에서 손으로 「다른 이름으로
+저장」을 해야 했다.** experiments/activate_env.py 가 _golden/ 아래의 위 세 파일명을
+그대로 찾으므로, 이름이 하나라도 다르면 "도면 파일이 없다" 로 죽는다. --save-as 는
+그 수작업을 없애고 파일명을 코드가 보증하게 한다.
+
 주의: 반드시 **비어 있는 새 도면**에서 실행할 것. 실무 도면에 서피스를 추가한다.
 """
 from __future__ import annotations
@@ -57,6 +67,7 @@ import glob
 import os
 import sys
 import time
+from pathlib import Path
 
 import pythoncom
 import win32com.client as w32
@@ -69,6 +80,39 @@ AREA = (X1 - X0) * (Y1 - Y0)          # 10,000 m2
 GRID = 5                              # 격자 분할 수 (평면이므로 정밀도와 무관)
 
 PREFIX = "TEST_"
+
+# 검증 도면을 두는 곳. experiments/activate_env.py 의 GOLDEN 과 같은 위치여야 한다.
+GOLDEN = Path(__file__).resolve().parent / "_golden"
+
+
+def _take_save_as(args: list[str]) -> tuple[str | None, list[str]]:
+    """--save-as <경로> 를 인자 목록에서 꺼내고 나머지를 돌려준다."""
+    for i, a in enumerate(args):
+        if a == "--save-as":
+            if i + 1 >= len(args):
+                raise SystemExit("--save-as 뒤에 파일명이 필요하다.")
+            return args[i + 1], args[:i] + args[i + 2:]
+        if a.startswith("--save-as="):
+            return a.split("=", 1)[1], args[:i] + args[i + 1:]
+    return None, args
+
+
+def _resolve_save_path(raw: str) -> Path:
+    """맨 파일명·상대 경로는 _golden/ 아래로 해석하고 확장자를 .dwg 로 맞춘다."""
+    p = Path(raw)
+    if not p.is_absolute():
+        p = GOLDEN / p
+    if p.suffix.lower() != ".dwg":
+        p = p.with_suffix(".dwg")
+    return p
+
+
+def _save_drawing(acad, target: Path) -> None:
+    """활성 도면을 target 으로 저장한다(폴더가 없으면 만든다)."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    acad.ActiveDocument.SaveAs(str(target))
+    print()
+    print(f"저장 완료: {target}")
 
 # 이름 -> (표고 함수, 설명) [, (x0, x1, y0, y1) 로 외곽 범위를 달리 지정]
 CASES: dict[str, list[tuple]] = {
@@ -302,6 +346,8 @@ def main() -> int:
     args = [a for a in sys.argv[1:]]
     clean = "--clean" in args
     new_drawing = "--new" in args
+    save_raw, args = _take_save_as(args)
+    save_as = _resolve_save_path(save_raw) if save_raw else None
     wanted = [a.upper() for a in args if a.upper() in CASES] or list(CASES)
 
     acad, cdoc, prog = connect(new_drawing=new_drawing)
@@ -332,6 +378,14 @@ def main() -> int:
     print("현재 서피스 목록:")
     for i in range(cdoc.Surfaces.Count):
         print("  -", cdoc.Surfaces.Item(i).Name)
+
+    if save_as is not None:
+        _save_drawing(acad, save_as)
+    else:
+        print()
+        print("⚠ 도면이 저장되지 않았다. experiments/activate_env.py 는 _golden/ 의")
+        print("  test_surfaces.dwg · test_surfaces_env2.dwg · test_surfaces_env3.dwg 를")
+        print("  찾는다. --save-as <파일명> 을 주거나 그 이름으로 직접 저장할 것.")
     return 0
 
 
