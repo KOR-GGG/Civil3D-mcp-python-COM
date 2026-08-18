@@ -8,7 +8,7 @@
 ## 0. 매 시행 준비 — 명령 하나
 
 ```powershell
-cd C:\Users\bim\source\civil3d-mcp
+cd "$env:USERPROFILE\source\civil3d-mcp"   # 2026-08-18: C:\Users\bim 하드코딩을 걷어냄
 .\.venv\Scripts\python.exe experiments\activate_env.py 3     # 1 · 2 · 3
 ```
 

@@ -90,6 +90,16 @@ $f = "$env:LOCALAPPDATA\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\
 }
 ```
 
+⚠ **2026-08-18 — 위 경로는 그대로 복붙하면 안 된다.** 이것은 랩탑(`bim`)에서 **실제로 넣었던 값의 기록**이라 사용자명이 박혀 있다. JSON 은 환경변수를 풀어 주지 않으므로 **PC 마다 손으로 고쳐야 한다.** 자기 PC 의 값은 이렇게 얻는다:
+
+```powershell
+(Get-Command civil3d-mcp).Source        # venv 를 activate 한 상태에서
+# 또는
+"$env:USERPROFILE\source\civil3d-mcp\.venv\Scripts\civil3d-mcp.exe"
+```
+
+venv 가 PATH 에 있다면 `README.md` 처럼 `"command": "civil3d-mcp"` 만 써도 된다(경로 무관이라 이쪽이 안전하다).
+
 ⚠ **BOM 없이 저장할 것.** PowerShell 의 `Out-File -Encoding utf8` 은 BOM을 붙이는데, 그러면 Claude Desktop이 JSON을 파싱하지 못하고 **아무 오류 없이 서버가 안 뜬다.**
 
 **연결 확인** — 로그에서 본다(도구 아이콘을 찾는 것보다 확실하다):
