@@ -43,18 +43,24 @@ COM out-parameter handling, error strategy, and the Civil 3D object model refere
 
 ## Installation
 
-```bash
+```powershell
 # 1. Clone
-git clone https://github.com/yourname/civil3d-mcp-python
-cd civil3d-mcp-python
+git clone https://github.com/KOR-GGG/Civil3D-mcp-python-COM.git civil3d-mcp
+cd civil3d-mcp
 
-# 2. Install dependencies (Windows, Python 3.11)
+# 2. Create the virtual environment - it MUST be named .venv
+#    experiments/activate_env.py and experiments/harness_d.py hardcode
+#    .venv\Scripts\, so any other name breaks the Chapter-5 harnesses.
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+
+# 3. Install dependencies (Windows, Python 3.11)
 pip install -r requirements.txt
 
-# 3. Install the package in editable mode
+# 4. Install the package in editable mode
 pip install -e .
 
-# 4. Run the pre-flight environment checker
+# 5. Run the pre-flight environment checker
 python setup_check.py
 # Use --fix to auto-install any missing pip packages:
 python setup_check.py --fix
@@ -210,9 +216,10 @@ civil3d-mcp-python/
 │       ├── earthwork_core.py    # Earthwork logic, COM-free (unit-testable)
 │       ├── tools_hydraulics.py  # Tools 22-24: pipeline hydraulics
 │       └── hydraulics_core.py   # Hydraulics logic, COM-free (unit-testable)
-├── tests/
-│   ├── __init__.py
-│   └── test_tools.py             # pytest suite (fully mocked COM)
+├── test_earthwork_core.py        # pytest suite for earthwork_core (COM-free)
+├── test_hydraulics_core.py       # pytest suite for hydraulics_core (COM-free)
+├── make_test_surfaces.py         # Builds the synthetic _golden/ validation drawings
+├── experiments/                  # Chapter-5 validation harnesses and result JSON
 ├── setup.py                      # Legacy setuptools entry point
 ├── setup_check.py                # Pre-flight environment checker
 ├── pyproject.toml                # PEP 517/518 build config
@@ -231,10 +238,17 @@ civil3d-mcp-python/
 
 ```bash
 pip install -e ".[dev]"
-pytest tests/ -v
+pytest -v
 ```
 
-Tests use a fully mocked `Civil3DClient` — no Civil 3D installation required to run the test suite.
+There is no `tests/` directory - the suites live at the repository root as
+`test_earthwork_core.py` and `test_hydraulics_core.py` (78 cases total).
+Both exercise `earthwork_core` / `hydraulics_core`, which are COM-free, so no
+Civil 3D installation is required to run them.
+
+> Note: `probe_surf_api.py` and `probe_volume.py` are **probes, not tests**. They
+> were renamed from `test_*` in commit `4f96e42` precisely because pytest collected
+> them and they mutated the drawing that happened to be open.
 
 ---
 
