@@ -22,12 +22,12 @@
   },
   "pv_factor_dynamo": 15.6948,
   "unit_cost_sheet": "주철관",
-  "length_m": 1708.293,
+  "length_m": 1.0,
   "reference_min_cost": "350mm",
   "reproduction_mismatch_rows": 0,
   "reproduction_selected_mm": 350,
   "tool_selected_mm": 350,
-  "tool_runner_up_margin_pct": 0.6720711832718131,
+  "tool_runner_up_margin_pct": 0.6720711832718052,
   "tool_excluded_count": 15,
   "head_loss_deviation": [
     {
@@ -242,6 +242,15 @@
     "가정값 (도구명세 검산 예시)": {
       "selected_mm": 600,
       "energy_pv_share_pct": 31.105545099327152,
+      "tight_count": 6,
+      "tight_variables": [
+        "전체 건설단가",
+        "D600 단가만 (선정)",
+        "D700 단가만 (차순위)",
+        "전력요금",
+        "할인율",
+        "펌프효율"
+      ],
       "ranking": [
         {
           "diameter_mm": 600,
@@ -371,42 +380,47 @@
     "실무 설계 조건 (주철관 23종)": {
       "selected_mm": 350,
       "energy_pv_share_pct": 9.282213784785322,
+      "tight_count": 2,
+      "tight_variables": [
+        "D350 단가만 (선정)",
+        "D400 단가만 (차순위)"
+      ],
       "ranking": [
         {
           "diameter_mm": 350,
-          "total_pv": 765758387.3298842
+          "total_pv": 448259.39539053565
         },
         {
           "diameter_mm": 400,
-          "total_pv": 770904828.7846153
+          "total_pv": 451272.01761326386
         },
         {
           "diameter_mm": 300,
-          "total_pv": 778275864.6387808
+          "total_pv": 455586.8721810491
         },
         {
           "diameter_mm": 450,
-          "total_pv": 807127825.3039974
+          "total_pv": 472476.22351903183
         },
         {
           "diameter_mm": 250,
-          "total_pv": 833740057.5155807
+          "total_pv": 488054.4833442394
         },
         {
           "diameter_mm": 500,
-          "total_pv": 866845973.0273955
+          "total_pv": 507434.0133849378
         },
         {
           "diameter_mm": 600,
-          "total_pv": 1019487677.1200488
+          "total_pv": 596787.3644158519
         },
         {
           "diameter_mm": 200,
-          "total_pv": 1505188430.4008622
+          "total_pv": 881106.7131931479
         }
       ],
-      "runner_up_margin_pct": 0.6720711832718131,
-      "third_margin_pct": 1.6346510225691078,
+      "runner_up_margin_pct": 0.6720711832718052,
+      "third_margin_pct": 1.6346510225690953,
       "excluded": [
         {
           "diameter_mm": 80,
@@ -577,31 +591,35 @@
     },
     "교차 — 실무 매개변수 + 가정값 단가표 7종": {
       "selected_mm": 300,
-      "energy_pv_share_pct": 21.080550218101532,
+      "energy_pv_share_pct": 21.080550218101536,
+      "tight_count": 1,
+      "tight_variables": [
+        "D400 단가만 (차순위)"
+      ],
       "ranking": [
         {
           "diameter_mm": 300,
-          "total_pv": 714319083.0117809
+          "total_pv": 418147.8721810491
         },
         {
           "diameter_mm": 400,
-          "total_pv": 771661602.5836153
+          "total_pv": 451715.01761326386
         },
         {
           "diameter_mm": 450,
-          "total_pv": 840883694.9839975
+          "total_pv": 492236.22351903183
         },
         {
           "diameter_mm": 500,
-          "total_pv": 952074419.0903956
+          "total_pv": 557325.0133849378
         },
         {
           "diameter_mm": 600,
-          "total_pv": 1183871587.6310487
+          "total_pv": 693014.3644158519
         }
       ],
-      "runner_up_margin_pct": 8.027577721998046,
-      "third_margin_pct": 17.718217948004792,
+      "runner_up_margin_pct": 8.02757772199805,
+      "third_margin_pct": 17.718217948004785,
       "excluded": [
         {
           "diameter_mm": 700,
@@ -704,6 +722,80 @@
       ]
     }
   },
+  "share_sweep": [
+    {
+      "case": "기준(실무)",
+      "selected_mm": 350,
+      "energy_pv_share_pct": 9.282213784785322,
+      "runner_up_margin_pct": 0.6720711832718052,
+      "third_margin_pct": 1.6346510225690953,
+      "tight_count": 2
+    },
+    {
+      "case": "전력요금 ×0.25",
+      "selected_mm": 250,
+      "energy_pv_share_pct": 16.356197974015068,
+      "runner_up_margin_pct": 18.959331190047003,
+      "third_margin_pct": 23.656288170340968,
+      "tight_count": 0
+    },
+    {
+      "case": "전력요금 ×0.5",
+      "selected_mm": 250,
+      "energy_pv_share_pct": 28.114012418432182,
+      "runner_up_margin_pct": 8.021901660232377,
+      "third_margin_pct": 12.206735876307773,
+      "tight_count": 1
+    },
+    {
+      "case": "전력요금 ×2.0",
+      "selected_mm": 400,
+      "energy_pv_share_pct": 9.18207730698744,
+      "runner_up_margin_pct": 2.4790133636369864,
+      "third_margin_pct": 3.568967920327641,
+      "tight_count": 2
+    },
+    {
+      "case": "전력요금 ×5.0",
+      "selected_mm": 450,
+      "energy_pv_share_pct": 11.733532749370038,
+      "runner_up_margin_pct": 2.936771989626044,
+      "third_margin_pct": 3.204889465971852,
+      "tight_count": 2
+    },
+    {
+      "case": "전력요금 ×40.0",
+      "selected_mm": 600,
+      "energy_pv_share_pct": 16.878978886189756,
+      "runner_up_margin_pct": 11.025719319236197,
+      "third_margin_pct": 32.94493770610985,
+      "tight_count": 0
+    },
+    {
+      "case": "유량 ×2.0",
+      "selected_mm": 450,
+      "energy_pv_share_pct": 16.085530286360616,
+      "runner_up_margin_pct": 0.8130274957913565,
+      "third_margin_pct": 6.866301940020031,
+      "tight_count": 2
+    },
+    {
+      "case": "유량 ×3.0",
+      "selected_mm": 600,
+      "energy_pv_share_pct": 10.41385945124888,
+      "runner_up_margin_pct": 0.760534799076651,
+      "third_margin_pct": 6.746891708460767,
+      "tight_count": 7
+    },
+    {
+      "case": "유량 ×4.0",
+      "selected_mm": 700,
+      "energy_pv_share_pct": 9.876708698471974,
+      "runner_up_margin_pct": 0.20998096229856064,
+      "third_margin_pct": 11.108245170131683,
+      "tight_count": 7
+    }
+  ],
   "earthwork_report_xlsx": [
     39116.1285566681,
     39116.1285566681,

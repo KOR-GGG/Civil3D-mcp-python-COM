@@ -25,8 +25,10 @@
    (기준값이 그 그래프의 출력임을 확인하는 절차이며, 도구 검증이 아니다)
 ③ 본 연구의 도구 `select_economic_diameter` 를 실무 조건으로 호출한다
 ④ 도구 산출과 기준값의 편차를 **원인별로 분해**한다
-⑤ 민감도를 두 사례(가정값 · 실무 조건)에 대해 각각 구해 나란히 놓는다
-⑥ 전부 JSON 으로 남긴다
+⑤ 민감도를 세 사례(가정값 · 실무 조건 · 교차)에 대해 각각 구해 나란히 놓는다
+⑥ 연장이 선정에 영향을 주는지 확인한다
+⑦ 「동력비 비중이 민감도의 동인인가」를 반증한다 (후보·단가표 고정, 비중만 스윕)
+⑧ 전부 JSON 으로 남긴다
 
 Civil 3D 에 접근하지 않으므로 CAD 없이 돈다.
 
@@ -81,8 +83,11 @@ def dynamo_head_loss_m_per_km(diameter_mm: int, flow_m3_per_day: float) -> float
     **D1000·D1100 에서 갈린다.**
     """
     c = 100 if diameter_mm < 800 else (110 if diameter_mm < 1200 else 120)
+    # ⚠ 계수를 hc.HW_COEFFICIENT 로 참조하지 말 것. 이 함수의 목적은 기준값이 그
+    #    그래프의 출력임을 **도구와 무관하게** 확인하는 것이므로, 도구 상수가 바뀌면
+    #    재현도 함께 바뀌는 구조가 되면 안 된다. 리터럴로 두고 아래에서 대조한다.
     return round(
-        hc.HW_COEFFICIENT
+        10.666
         * (c ** -1.85)
         * (diameter_mm / 1000) ** -4.87
         * (flow_m3_per_day / 86400) ** 1.85
@@ -318,20 +323,35 @@ def sensitivity(case: dict[str, Any]) -> dict[str, Any]:
         })
 
     # 선정 관경의 총현가에서 동력비가 차지하는 비중.
-    # ★ 민감도의 크기를 좌우하는 것이 후보 개수도 단가표 구조도 아니라 이 비중이라는
-    #   것이 세 사례를 나란히 놓으면 드러난다. 동력비 비중이 크면 전력요금·펌프효율·
-    #   할인율·가동시간이 모두 선정을 쉽게 뒤집고, 작으면 단가만 남는다.
+    #
+    # ⚠ 2026-08-19 철회 — 처음에 여기에 「민감도의 크기를 좌우하는 것은 이 비중이다」
+    #   라고 적었으나 **반증되었다.** ⑥의 비중 스윕이 반례를 낸다.
+    #     전력요금 ×0.5 → 비중 28.11 % (가정값 사례의 31.11 % 에 근접) → 역전 1/7
+    #     유량     ×3   → 비중 10.41 % (실무 사례의 9.28 % 에 근접)   → 역전 7/7
+    #   비중이 비슷해도 개수가 정반대이므로 비중은 동인이 아니다. 차순위 격차와도
+    #   단조 관계가 아니다(격차 0.76 % → 7/7 이고 0.81 % → 2/7).
+    #
+    #   남는 것은 **인과가 아니라 관찰**이다 — 「10 % 이내로 뒤집히는 변수의 개수」
+    #   라는 지표 자체가 입력 조건에 대해 0/7 에서 7/7 까지 요동한다. 그러므로 이
+    #   지표를 방법의 성질로 보고해서는 안 되고 사례마다 함께 제시해야 한다.
     sel = result["selected"]
     energy_share = (sel["energy_pv"] / sel["total_pv"] * 100
                     if sel["total_pv"] else None)
 
+    tight = [r["variable"] for r in rows
+             if (r["down_threshold_pct"] is not None and abs(r["down_threshold_pct"]) < 10)
+             or (r["up_threshold_pct"] is not None and abs(r["up_threshold_pct"]) < 10)]
+
     return {
         "selected_mm": pick,
         "energy_pv_share_pct": energy_share,
+        "tight_count": len(tight),
+        "tight_variables": tight,
         "ranking": [{"diameter_mm": c["diameter_mm"], "total_pv": c["total_pv"]}
                     for c in ranked],
-        "runner_up_margin_pct": (result["runner_up_margin"] * 100
-                                 if result["runner_up_margin"] is not None else None),
+        # 후보가 한 종만 남으면 도구가 이 키를 아예 넣지 않는다(KeyError 방지)
+        "runner_up_margin_pct": (result.get("runner_up_margin") * 100
+                                 if result.get("runner_up_margin") is not None else None),
         "third_margin_pct": ((ranked[2]["total_pv"] - ranked[0]["total_pv"])
                              / ranked[0]["total_pv"] * 100 if len(ranked) > 2 else None),
         "excluded": result["excluded"],
@@ -350,8 +370,13 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dataset", default=os.environ.get("CIVIL3D_MCP_DATASET"),
                     help="「02. 수리종단검토(도수 및 송수관로)」 폴더 경로")
-    ap.add_argument("--length-m", type=float, default=1708.293,
-                    help="관로 연장(m). 기준 산출물 「관로 수리계산」 C2 의 값이 기본값이다")
+    ap.add_argument("--length-m", type=float, default=1.0,
+                    help=("관로 연장(m). 기본값 1.0 은 총현가를 **원/m** 로 내기 위한 것이다. "
+                          "원 워크플로도 총현가를 원/m 로 계산하며 연장을 곱하지 않는다. "
+                          "⚠ 경제적 관경계산의 입력 양식에는 연장 항목이 자체가 없다 — "
+                          "요약 보고서의 1,708.293 m 는 유량·관경이 다른 **별개 시나리오**"
+                          "(수리종단 검토)의 값이므로 기본값으로 쓰지 않는다. "
+                          "⑥에서 보이듯 선정과 격차는 연장에 불변이다."))
     args = ap.parse_args()
 
     if not args.dataset:
@@ -374,7 +399,8 @@ def main() -> int:
     print("=" * 92)
     for k, v in p.items():
         print(f"    {k:10s} = {v!r}   (셀 타입 {ds['parameter_cell_types'][k]})")
-    print(f"    관로 연장   = {args.length_m} m   ← 기준 산출물 「관로 수리계산」 C2")
+    print(f"    관로 연장   = {args.length_m} m"
+          + ("   (원/m 기준 — 입력 양식에 연장 항목이 없다)" if args.length_m == 1.0 else "   ⚠ 별개 시나리오의 값일 수 있다"))
     print()
 
     # 원 워크플로에서만 존재하는 상수 — 매개변수 파일에 없다
@@ -390,7 +416,13 @@ def main() -> int:
     print()
 
     # 관 재질 시트 — 그래프는 시트명을 하드코딩하므로 매개변수의 「관 재질」을 읽지 않는다
-    sheet = material if material in ds["unit_cost_sheets"] else "주철관"
+    if material not in ds["unit_cost_sheets"]:
+        raise SystemExit(
+            f"[중단] 관 재질 '{material}' 시트가 단가표에 없다. "
+            f"있는 시트: {list(ds['unit_cost_sheets'])}\n"
+            f"       조용히 다른 재질로 대체하면 그 결과를 실제 재질의 결과로 읽게 된다."
+        )
+    sheet = material
     cost_rows = [(d, c) for d, c in ds["unit_cost_sheets"][sheet] if c is not None]
     unit_cost = dict(cost_rows)
     diameters = [d for d, _ in cost_rows]
@@ -564,7 +596,7 @@ def main() -> int:
     print("=" * 92)
     print("  ⑥ 연장이 선정에 영향을 주는가")
     print("=" * 92)
-    for L in (1.0, args.length_m, 4200.0):
+    for L in (1.0, 1708.293, 4200.0):
         r = hc.select_economic_diameter(
             unit_construction_cost=[{"diameter_mm": d, "cost_per_m": c}
                                     for d, c in unit_cost.items()],
@@ -573,6 +605,39 @@ def main() -> int:
               f" · 차순위 격차 {r['runner_up_margin']*100:.6f} %")
     print("    ※ 실양정(static_head_m)이 0 이면 총현가가 연장에 비례하므로 후보 간 순위가"
           " 연장에 무관하다. 원 워크플로도 총현가를 원/m 로 계산해 연장을 곱하지 않는다.")
+    print()
+
+    # ---------------------------------------------------------------- ⑦ 비중 스윕
+    # ★ 「동력비 비중이 민감도의 동인」이라는 가설을 **반증**하기 위한 것이다.
+    #   후보 집합과 단가표를 고정한 채 전력요금·유량만 움직여 비중을 바꾼다.
+    #   비중이 동인이라면 비중이 비슷한 사례끼리 역전 개수도 비슷해야 한다.
+    print("=" * 92)
+    print("  ⑦ 「동력비 비중이 동인인가」 — 후보·단가표를 고정하고 비중만 움직인다")
+    print("=" * 92)
+    print(f"    {'사례':<18} {'선정':>6} {'동력비비중':>10} {'차순위격차':>11} {'3위격차':>10} {'10%내':>7}")
+    sweep_rows = []
+    variants = [("기준(실무)", {})]
+    variants += [(f"전력요금 ×{f}", {"power_tariff_won_per_kwh": tariff * f})
+                 for f in (0.25, 0.5, 2.0, 5.0, 40.0)]
+    variants += [(f"유량 ×{f}", {"flow_m3_s": flow_per_day * f / 86400.0})
+                 for f in (2.0, 3.0, 4.0)]
+    for label, over in variants:
+        s = sensitivity({"base": dict(measured_base, length_m=1.0, **over),
+                         "unit_cost": unit_cost})
+        third = ("%9.3f%%" % s["third_margin_pct"]) if s["third_margin_pct"] is not None else "     —   "
+        print(f"    {label:<18} D{s['selected_mm']:<5} {s['energy_pv_share_pct']:9.2f}%"
+              f" {s['runner_up_margin_pct']:10.4f}% {third} {s['tight_count']:>4}/7")
+        sweep_rows.append({"case": label, "selected_mm": s["selected_mm"],
+                           "energy_pv_share_pct": s["energy_pv_share_pct"],
+                           "runner_up_margin_pct": s["runner_up_margin_pct"],
+                           "third_margin_pct": s["third_margin_pct"],
+                           "tight_count": s["tight_count"]})
+    print()
+    print("  ★ 판정 — 비중이 비슷한데 개수가 정반대인 짝이 있으면 「비중이 동인」은 성립하지 않는다.")
+    print("     전력요금 ×0.5 는 비중이 가정값 사례(31.11 %)에 가까운데 개수는 최소이고,")
+    print("     유량 ×3 은 비중이 실무 사례(9.28 %)에 가까운데 개수는 최대다.")
+    print("     차순위 격차와도 단조가 아니다(0.76 % → 7/7 인데 0.81 % → 2/7).")
+    print("     남는 것은 인과가 아니라 **지표 자체가 사례에 따라 0/7~7/7 로 요동한다**는 관찰이다.")
     print()
 
     out = Path(__file__).with_name("baseline_recompute_result.json")
@@ -592,6 +657,7 @@ def main() -> int:
         "tool_excluded_count": len(tool["excluded"]),
         "head_loss_deviation": dev_rows,
         "sensitivity": sens,
+        "share_sweep": sweep_rows,
         "earthwork_report_xlsx": ds["earthwork_report_xlsx"],
         "hw_coefficient": hc.HW_COEFFICIENT,
     }, ensure_ascii=False, indent=2), encoding="utf-8")
