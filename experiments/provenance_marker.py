@@ -34,6 +34,15 @@ import pythoncom
 import win32com.client as w32
 from win32com.client import VARIANT
 
+# 2026-08-19 추가: 한글 Windows 콘솔은 기본이 cp949 라, 아래 출력에 쓰이는
+# em-dash 나 경고 기호 하나 때문에 UnicodeEncodeError 로 스크립트가 즉사한다.
+# (setup_check.py 에서 같은 결함을 고쳤으나 실험 스크립트에는 남아 있었다.)
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:                                          # noqa: BLE001
+        pass
+
 REPO = Path(__file__).resolve().parents[1]
 STATE = Path(__file__).with_name("provenance_marker_state.json")
 PREFIX = "ZZ_PROBE_"
@@ -42,12 +51,49 @@ X0, X1, Y0, Y1 = 200.0, 260.0, 200.0, 260.0   # 부지(0~100)와 떨어진 위�
 GRID = 3
 
 
+# 2026-08-19 정정 — 버전 해석을 UI 객체와 LAND 코클래스로 **분리**한다.
+#
+# 이전 구현은 ("13.6","13.7","13.8") 오름차순으로 AeccXUiLand.AeccApplication 을
+# 시도해 성공한 버전을 그대로 AeccXLand 코클래스에도 썼다. 그런데 Civil 3D 2026
+# 에서 실측한 결과는 다음과 같다.
+#
+#     ver    AeccXUiLand.AeccApplication    AeccXLand.AeccTinCreationData
+#     13.6   실패                            실패
+#     13.7   OK                              실패      <-- 함정
+#     13.8   OK                              OK
+#
+# 즉 **UI 객체가 되는 버전이 도메인 코클래스도 된다는 보장이 없다.** 오름차순이면
+# 13.7 에서 멈춰 prog="13.7" 을 반환하고, 이어지는 AeccTinCreationData.13.7 이
+# "응용프로그램을 로드하는 중에 문제 발생" 으로 죽는다. make_test_surfaces.py 가
+# 살아남은 것은 13.8 을 먼저 시도해서였을 뿐이다.
+#
+# src/civil3d_mcp/client.py 는 이미 두 버전을 따로 해석한다(_AECC_LAND_VERSIONS).
+# 여기서도 같은 방식을 쓴다: 내림차순으로 시도하고, LAND 버전은 코클래스를 실제로
+# 만들어 보아 확정한다.
+_UI_VERSIONS = ("13.8", "13.7", "13.6", "14.4", "14.0", "13.0")
+_LAND_VERSIONS = ("13.8", "13.7", "13.6", "14.4", "14.0", "13.0")
+
+
+def _land_version(acad) -> str:
+    """AeccXLand 코클래스를 실제로 인스턴스화해 보고 되는 버전을 돌려준다."""
+    for ver in _LAND_VERSIONS:
+        try:
+            acad.GetInterfaceObject(f"AeccXLand.AeccTinCreationData.{ver}")
+            return ver
+        except Exception:                                       # noqa: BLE001
+            continue
+    raise SystemExit(
+        "AeccXLand 코클래스를 만들지 못했다. Civil 3D(AutoCAD 아님)가 실행 중인지, "
+        f"시도한 버전({', '.join(_LAND_VERSIONS)}) 밖의 릴리스인지 확인할 것."
+    )
+
+
 def _civil():
     acad = w32.GetActiveObject("AutoCAD.Application")
-    for ver in ("13.6", "13.7", "13.8"):
+    for ver in _UI_VERSIONS:
         try:
             civil = acad.GetInterfaceObject(f"AeccXUiLand.AeccApplication.{ver}")
-            return acad, civil.ActiveDocument, ver
+            return acad, civil.ActiveDocument, _land_version(acad)
         except Exception:                                       # noqa: BLE001
             continue
     raise SystemExit("Civil 3D 인터페이스를 얻지 못했다.")

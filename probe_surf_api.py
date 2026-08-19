@@ -18,10 +18,20 @@
 → pytest 가 수집하지 않도록 이름을 `probe_` 로 바꾸었다. 실행하려면 직접
    `python probe_surf_api.py` 로 호출할 것. **반드시 사본 도면에서.**
 """
+import sys
 import win32com.client as w32
 import pythoncom
 from civil3d_mcp.client import Civil3DClient
 import array
+
+# 2026-08-19 추가: 한글 Windows 콘솔은 기본이 cp949 라, 아래 출력에 쓰이는
+# em-dash 나 경고 기호 하나 때문에 UnicodeEncodeError 로 스크립트가 즉사한다.
+# (setup_check.py 에서 같은 결함을 고쳤으나 실험 스크립트에는 남아 있었다.)
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:                                          # noqa: BLE001
+        pass
 
 out = []
 
@@ -30,7 +40,8 @@ try:
     c.connect()
 
     # Get TypeInfo for AddPointMultiple
-    cd = c._acad.GetInterfaceObject("AeccXLand.AeccTinCreationData.13.7")
+    cd = c._new_aecc_object("AeccTinCreationData")   # 2026-08-19: "13.7" 하드코딩 제거
+                                                  # (2026 에서 UI 는 13.7 이 되지만 LAND 는 13.8 만 된다)
     cd.Name = "__FullWorkflowTest__"
     cd.Layer = "0"
     cd.BaseLayer = "0"
