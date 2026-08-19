@@ -1,7 +1,7 @@
 {
-  "name": "ZZ_PROBE_NDLIL1",
-  "tag": "NDLIL1",
-  "elevation": 522.54,
-  "created_at": "2026-08-19 11:02:10",
-  "drawing": "test_surfaces_env3.dwg"
+  "name": "ZZ_PROBE_QL1MGB",
+  "tag": "QL1MGB",
+  "elevation": 586.06,
+  "created_at": "2026-08-19 12:02:04",
+  "drawing": "test_surfaces_env2.dwg"
 }
