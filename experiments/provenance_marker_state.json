@@ -1,7 +1,7 @@
 {
-  "name": "ZZ_PROBE_OKL413",
-  "tag": "OKL413",
-  "elevation": 506.2,
-  "created_at": "2026-08-17 15:34:47",
+  "name": "ZZ_PROBE_NDLIL1",
+  "tag": "NDLIL1",
+  "elevation": 522.54,
+  "created_at": "2026-08-19 11:02:10",
   "drawing": "test_surfaces_env3.dwg"
 }
