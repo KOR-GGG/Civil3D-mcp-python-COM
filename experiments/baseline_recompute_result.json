@@ -1,0 +1,715 @@
+{
+  "dataset_root": "D:\\Dropbox\\my claude\\일반\\논문작성\\2023연구성과\\02. Dataset\\01. Dynamo Logic(.dyn)\\02. 수리종단검토(도수 및 송수관로)",
+  "parameters": {
+    "설계유량": 8000,
+    "관 재질": "주철관",
+    "기본요금": 5060,
+    "할인율": 5.34,
+    "사용년수": 35
+  },
+  "parameter_cell_types": {
+    "설계유량": "n",
+    "관 재질": "s",
+    "기본요금": "n",
+    "할인율": "n",
+    "사용년수": "n"
+  },
+  "derived_power": {
+    "avg_monthly_won_per_kwh": 48.98,
+    "usage_fee_won_per_kwh": 61.61,
+    "unit_power_kw": 0.141,
+    "annual_power_cost_won": 76098.0
+  },
+  "pv_factor_dynamo": 15.6948,
+  "unit_cost_sheet": "주철관",
+  "length_m": 1708.293,
+  "reference_min_cost": "350mm",
+  "reproduction_mismatch_rows": 0,
+  "reproduction_selected_mm": 350,
+  "tool_selected_mm": 350,
+  "tool_runner_up_margin_pct": 0.6720711832718131,
+  "tool_excluded_count": 15,
+  "head_loss_deviation": [
+    {
+      "diameter_mm": 80,
+      "tool_head_loss_m_per_km": 5729.535241440452,
+      "reference_head_loss_m_per_km": 5729.54,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 55236237.77142428,
+      "reference_total_pv_won_per_m": 54932192,
+      "total_pv_deviation_pct": 0.5534928797749026
+    },
+    {
+      "diameter_mm": 100,
+      "tool_head_loss_m_per_km": 1932.714174147799,
+      "reference_head_loss_m_per_km": 1932.71,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 18763787.65210716,
+      "reference_total_pv_won_per_m": 18661173,
+      "total_pv_deviation_pct": 0.5498831831587465
+    },
+    {
+      "diameter_mm": 125,
+      "tool_head_loss_m_per_km": 651.95236987716,
+      "reference_head_loss_m_per_km": 651.95,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 6470949.911910568,
+      "reference_total_pv_won_per_m": 6436330,
+      "total_pv_deviation_pct": 0.5378827982805164
+    },
+    {
+      "diameter_mm": 150,
+      "tool_head_loss_m_per_km": 268.28920594589096,
+      "reference_head_loss_m_per_km": 268.29,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 2797445.5318350038,
+      "reference_total_pv_won_per_m": 2783219,
+      "total_pv_deviation_pct": 0.511153877398931
+    },
+    {
+      "diameter_mm": 200,
+      "tool_head_loss_m_per_km": 66.09240459710276,
+      "reference_head_loss_m_per_km": 66.09,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 881106.7131931479,
+      "reference_total_pv_won_per_m": 877583,
+      "total_pv_deviation_pct": 0.40152477807203524
+    },
+    {
+      "diameter_mm": 250,
+      "tool_head_loss_m_per_km": 22.294605371205876,
+      "reference_head_loss_m_per_km": 22.29,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 488054.4833442394,
+      "reference_total_pv_won_per_m": 486830,
+      "total_pv_deviation_pct": 0.25152175179003256
+    },
+    {
+      "diameter_mm": 300,
+      "tool_head_loss_m_per_km": 9.174599630713557,
+      "reference_head_loss_m_per_km": 9.17,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 455586.8721810491,
+      "reference_total_pv_won_per_m": 455063,
+      "total_pv_deviation_pct": 0.11512080328417876
+    },
+    {
+      "diameter_mm": 350,
+      "tool_head_loss_m_per_km": 4.330681609653902,
+      "reference_head_loss_m_per_km": 4.33,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 448259.39539053565,
+      "reference_total_pv_won_per_m": 448022,
+      "total_pv_deviation_pct": 0.05298744046846953
+    },
+    {
+      "diameter_mm": 400,
+      "tool_head_loss_m_per_km": 2.260140689118309,
+      "reference_head_loss_m_per_km": 2.26,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 451272.01761326386,
+      "reference_total_pv_won_per_m": 451153,
+      "total_pv_deviation_pct": 0.02638076512044893
+    },
+    {
+      "diameter_mm": 450,
+      "tool_head_loss_m_per_km": 1.273569616614904,
+      "reference_head_loss_m_per_km": 1.27,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 472476.22351903183,
+      "reference_total_pv_won_per_m": 472372,
+      "total_pv_deviation_pct": 0.022063864715061755
+    },
+    {
+      "diameter_mm": 500,
+      "tool_head_loss_m_per_km": 0.7624014446813888,
+      "reference_head_loss_m_per_km": 0.76,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 507434.0133849378,
+      "reference_total_pv_won_per_m": 507376,
+      "total_pv_deviation_pct": 0.011434002581472988
+    },
+    {
+      "diameter_mm": 600,
+      "tool_head_loss_m_per_km": 0.31374083085871723,
+      "reference_head_loss_m_per_km": 0.31,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 596787.3644158519,
+      "reference_total_pv_won_per_m": 596739,
+      "total_pv_deviation_pct": 0.008104785484422389
+    },
+    {
+      "diameter_mm": 700,
+      "tool_head_loss_m_per_km": 0.14809492523781198,
+      "reference_head_loss_m_per_km": 0.15,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 676355.8689061071,
+      "reference_total_pv_won_per_m": 676361,
+      "total_pv_deviation_pct": -0.0007586324304403881
+    },
+    {
+      "diameter_mm": 800,
+      "tool_head_loss_m_per_km": 0.06479521384320813,
+      "reference_head_loss_m_per_km": 0.06,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 800349.5405421152,
+      "reference_total_pv_won_per_m": 800308,
+      "total_pv_deviation_pct": 0.0051905693951859195
+    },
+    {
+      "diameter_mm": 900,
+      "tool_head_loss_m_per_km": 0.036511539325884704,
+      "reference_head_loss_m_per_km": 0.04,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 899273.7961797981,
+      "reference_total_pv_won_per_m": 899300,
+      "total_pv_deviation_pct": -0.002913801868332876
+    },
+    {
+      "diameter_mm": 1000,
+      "tool_head_loss_m_per_km": 0.018607255733566374,
+      "reference_head_loss_m_per_km": 0.02,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 1088722.7751036624,
+      "reference_total_pv_won_per_m": 1088732,
+      "total_pv_deviation_pct": -0.000847306438830139
+    },
+    {
+      "diameter_mm": 1100,
+      "tool_head_loss_m_per_km": 0.011697685739640928,
+      "reference_head_loss_m_per_km": 0.01,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 1200491.3892212082,
+      "reference_total_pv_won_per_m": 1200473,
+      "total_pv_deviation_pct": 0.0015318313038419071
+    },
+    {
+      "diameter_mm": 1200,
+      "tool_head_loss_m_per_km": 0.007657194139092182,
+      "reference_head_loss_m_per_km": 0.01,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 1335633.5689182533,
+      "reference_total_pv_won_per_m": 1335654,
+      "total_pv_deviation_pct": -0.0015296687425564463
+    },
+    {
+      "diameter_mm": 1350,
+      "tool_head_loss_m_per_km": 0.004314762284941563,
+      "reference_head_loss_m_per_km": 0,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 1240950.4554454356,
+      "reference_total_pv_won_per_m": 1240909,
+      "total_pv_deviation_pct": 0.003340732111347136
+    },
+    {
+      "diameter_mm": 1500,
+      "tool_head_loss_m_per_km": 0.0025829612740289696,
+      "reference_head_loss_m_per_km": 0,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 1366357.8166186423,
+      "reference_total_pv_won_per_m": 1366333,
+      "total_pv_deviation_pct": 0.0018162935859928797
+    },
+    {
+      "diameter_mm": 1650,
+      "tool_head_loss_m_per_km": 0.001623811146248074,
+      "reference_head_loss_m_per_km": 0,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 1621965.6012799607,
+      "reference_total_pv_won_per_m": 1621950,
+      "total_pv_deviation_pct": 0.0009618841493703517
+    },
+    {
+      "diameter_mm": 1800,
+      "tool_head_loss_m_per_km": 0.0010629313753837408,
+      "reference_head_loss_m_per_km": 0,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 1845422.2124498927,
+      "reference_total_pv_won_per_m": 1845412,
+      "total_pv_deviation_pct": 0.0005533967424432527
+    },
+    {
+      "diameter_mm": 2000,
+      "tool_head_loss_m_per_km": 0.0006363063358434207,
+      "reference_head_loss_m_per_km": 0,
+      "head_loss_matches_at_reference_precision": true,
+      "tool_total_pv_won_per_m": 2251330.1135146837,
+      "reference_total_pv_won_per_m": 2251324,
+      "total_pv_deviation_pct": 0.0002715519704704885
+    }
+  ],
+  "sensitivity": {
+    "가정값 (도구명세 검산 예시)": {
+      "selected_mm": 600,
+      "energy_pv_share_pct": 31.105545099327152,
+      "ranking": [
+        {
+          "diameter_mm": 600,
+          "total_pv": 4206434326.5044065
+        },
+        {
+          "diameter_mm": 700,
+          "total_pv": 4229619591.4057355
+        },
+        {
+          "diameter_mm": 800,
+          "total_pv": 4680223935.321396
+        },
+        {
+          "diameter_mm": 500,
+          "total_pv": 5489542229.385164
+        },
+        {
+          "diameter_mm": 450,
+          "total_pv": 7327333558.373844
+        },
+        {
+          "diameter_mm": 400,
+          "total_pv": 11231759638.22642
+        }
+      ],
+      "runner_up_margin_pct": 0.5511857098360133,
+      "third_margin_pct": 11.263449564199277,
+      "excluded": [
+        {
+          "diameter_mm": 300,
+          "velocity_m_s": 4.951487118414521,
+          "reason": "velocity above allowed range (3.0 m/s)"
+        }
+      ],
+      "warnings": [
+        "D600 and D700 differ by only 0.55% in total present value. A small change in unit cost or tariff can flip the selection, so treat this as a tie and check the sensitivity before fixing the diameter."
+      ],
+      "assumptions": {
+        "velocity_range_m_s": [
+          0.3,
+          3.0
+        ],
+        "discount_rate": 0.045,
+        "service_life_years": 30,
+        "pv_factor": 16.28888854428883,
+        "power_tariff_won_per_kwh": 130.0,
+        "pump_efficiency": 0.75,
+        "annual_operating_hours": 8760.0,
+        "static_head_m": 0.0,
+        "energy_basis": "friction head only",
+        "minor_losses": "not included"
+      },
+      "thresholds": [
+        {
+          "variable": "전체 건설단가",
+          "down_threshold_pct": -3.2556152343749867,
+          "down_diameter": 700,
+          "down_span_pct": -70.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 200.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "D600 단가만 (선정)",
+          "down_threshold_pct": null,
+          "down_diameter": null,
+          "down_span_pct": -70.0,
+          "up_threshold_pct": 0.8056640625,
+          "up_diameter": 700,
+          "up_span_pct": 200.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "D700 단가만 (차순위)",
+          "down_threshold_pct": -0.6494140624999978,
+          "down_diameter": 700,
+          "down_span_pct": -70.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 200.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "전력요금",
+          "down_threshold_pct": -68.57666015625,
+          "down_diameter": 500,
+          "down_span_pct": -90.0,
+          "up_threshold_pct": 3.35693359375,
+          "up_diameter": 700,
+          "up_span_pct": 400.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "할인율",
+          "down_threshold_pct": -6.185302734375009,
+          "down_diameter": 700,
+          "down_span_pct": -90.0,
+          "up_threshold_pct": 332.025146484375,
+          "up_diameter": 500,
+          "up_span_pct": 400.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "연간 가동시간",
+          "down_threshold_pct": -68.57666015625,
+          "down_diameter": 500,
+          "down_span_pct": -90.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 0.0,
+          "up_bound_reason": "연 8,760 h"
+        },
+        {
+          "variable": "펌프효율",
+          "down_threshold_pct": -3.253173828125,
+          "down_diameter": 700,
+          "down_span_pct": -50.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 33.33333333333333,
+          "up_bound_reason": "η ≤ 1"
+        }
+      ]
+    },
+    "실무 설계 조건 (주철관 23종)": {
+      "selected_mm": 350,
+      "energy_pv_share_pct": 9.282213784785322,
+      "ranking": [
+        {
+          "diameter_mm": 350,
+          "total_pv": 765758387.3298842
+        },
+        {
+          "diameter_mm": 400,
+          "total_pv": 770904828.7846153
+        },
+        {
+          "diameter_mm": 300,
+          "total_pv": 778275864.6387808
+        },
+        {
+          "diameter_mm": 450,
+          "total_pv": 807127825.3039974
+        },
+        {
+          "diameter_mm": 250,
+          "total_pv": 833740057.5155807
+        },
+        {
+          "diameter_mm": 500,
+          "total_pv": 866845973.0273955
+        },
+        {
+          "diameter_mm": 600,
+          "total_pv": 1019487677.1200488
+        },
+        {
+          "diameter_mm": 200,
+          "total_pv": 1505188430.4008622
+        }
+      ],
+      "runner_up_margin_pct": 0.6720711832718131,
+      "third_margin_pct": 1.6346510225691078,
+      "excluded": [
+        {
+          "diameter_mm": 80,
+          "velocity_m_s": 18.420711006006403,
+          "reason": "velocity above allowed range (3.0 m/s)"
+        },
+        {
+          "diameter_mm": 100,
+          "velocity_m_s": 11.789255043844097,
+          "reason": "velocity above allowed range (3.0 m/s)"
+        },
+        {
+          "diameter_mm": 125,
+          "velocity_m_s": 7.545123228060223,
+          "reason": "velocity above allowed range (3.0 m/s)"
+        },
+        {
+          "diameter_mm": 150,
+          "velocity_m_s": 5.239668908375155,
+          "reason": "velocity above allowed range (3.0 m/s)"
+        },
+        {
+          "diameter_mm": 700,
+          "velocity_m_s": 0.2405970417111041,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 800,
+          "velocity_m_s": 0.18420711006006402,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 900,
+          "velocity_m_s": 0.1455463585659765,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 1000,
+          "velocity_m_s": 0.11789255043844099,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 1100,
+          "velocity_m_s": 0.09743185986648013,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 1200,
+          "velocity_m_s": 0.08186982669336179,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 1350,
+          "velocity_m_s": 0.06468727047376734,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 1500,
+          "velocity_m_s": 0.05239668908375155,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 1650,
+          "velocity_m_s": 0.04330304882954675,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 1800,
+          "velocity_m_s": 0.036386589641494126,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 2000,
+          "velocity_m_s": 0.029473137609610248,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        }
+      ],
+      "warnings": [
+        "D350 and D400 differ by only 0.67% in total present value. A small change in unit cost or tariff can flip the selection, so treat this as a tie and check the sensitivity before fixing the diameter."
+      ],
+      "assumptions": {
+        "velocity_range_m_s": [
+          0.3,
+          3.0
+        ],
+        "discount_rate": 0.053399999999999996,
+        "service_life_years": 35,
+        "pv_factor": 15.694846186315145,
+        "power_tariff_won_per_kwh": 61.61,
+        "pump_efficiency": 0.8,
+        "annual_operating_hours": 8760.0,
+        "static_head_m": 0.0,
+        "energy_basis": "friction head only",
+        "minor_losses": "not included"
+      },
+      "thresholds": [
+        {
+          "variable": "전체 건설단가",
+          "down_threshold_pct": -13.15917968750001,
+          "down_diameter": 400,
+          "down_span_pct": -70.0,
+          "up_threshold_pct": 18.68896484375,
+          "up_diameter": 300,
+          "up_span_pct": 200.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "D350 단가만 (선정)",
+          "down_threshold_pct": null,
+          "down_diameter": null,
+          "down_span_pct": -70.0,
+          "up_threshold_pct": 0.74462890625,
+          "up_diameter": 400,
+          "up_span_pct": 200.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "D400 단가만 (차순위)",
+          "down_threshold_pct": -0.7092285156250044,
+          "down_diameter": 400,
+          "down_span_pct": -70.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 200.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "전력요금",
+          "down_threshold_pct": -15.748901367187507,
+          "down_diameter": 300,
+          "down_span_pct": -90.0,
+          "up_threshold_pct": 15.14892578125,
+          "up_diameter": 400,
+          "up_span_pct": 400.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "할인율",
+          "down_threshold_pct": -20.604858398437496,
+          "down_diameter": 400,
+          "down_span_pct": -90.0,
+          "up_threshold_pct": 27.490234375,
+          "up_diameter": 300,
+          "up_span_pct": 400.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "연간 가동시간",
+          "down_threshold_pct": -15.748901367187507,
+          "down_diameter": 300,
+          "down_span_pct": -90.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 0.0,
+          "up_bound_reason": "연 8,760 h"
+        },
+        {
+          "variable": "펌프효율",
+          "down_threshold_pct": -13.153076171875,
+          "down_diameter": 400,
+          "down_span_pct": -50.0,
+          "up_threshold_pct": 18.68896484375,
+          "up_diameter": 300,
+          "up_span_pct": 25.0,
+          "up_bound_reason": "η ≤ 1"
+        }
+      ]
+    },
+    "교차 — 실무 매개변수 + 가정값 단가표 7종": {
+      "selected_mm": 300,
+      "energy_pv_share_pct": 21.080550218101532,
+      "ranking": [
+        {
+          "diameter_mm": 300,
+          "total_pv": 714319083.0117809
+        },
+        {
+          "diameter_mm": 400,
+          "total_pv": 771661602.5836153
+        },
+        {
+          "diameter_mm": 450,
+          "total_pv": 840883694.9839975
+        },
+        {
+          "diameter_mm": 500,
+          "total_pv": 952074419.0903956
+        },
+        {
+          "diameter_mm": 600,
+          "total_pv": 1183871587.6310487
+        }
+      ],
+      "runner_up_margin_pct": 8.027577721998046,
+      "third_margin_pct": 17.718217948004792,
+      "excluded": [
+        {
+          "diameter_mm": 700,
+          "velocity_m_s": 0.2405970417111041,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        },
+        {
+          "diameter_mm": 800,
+          "velocity_m_s": 0.18420711006006402,
+          "reason": "velocity below allowed range (0.3 m/s)"
+        }
+      ],
+      "warnings": [],
+      "assumptions": {
+        "velocity_range_m_s": [
+          0.3,
+          3.0
+        ],
+        "discount_rate": 0.053399999999999996,
+        "service_life_years": 35,
+        "pv_factor": 15.694846186315145,
+        "power_tariff_won_per_kwh": 61.61,
+        "pump_efficiency": 0.8,
+        "annual_operating_hours": 8760.0,
+        "static_head_m": 0.0,
+        "energy_basis": "friction head only",
+        "minor_losses": "not included"
+      },
+      "thresholds": [
+        {
+          "variable": "전체 건설단가",
+          "down_threshold_pct": -33.572998046875,
+          "down_diameter": 400,
+          "down_span_pct": -70.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 200.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "D300 단가만 (선정)",
+          "down_threshold_pct": null,
+          "down_diameter": null,
+          "down_span_pct": -70.0,
+          "up_threshold_pct": 10.174560546875,
+          "up_diameter": 400,
+          "up_span_pct": 200.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "D400 단가만 (차순위)",
+          "down_threshold_pct": -7.810058593750013,
+          "down_diameter": 400,
+          "down_span_pct": -70.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 200.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "전력요금",
+          "down_threshold_pct": null,
+          "down_diameter": null,
+          "down_span_pct": -90.0,
+          "up_threshold_pct": 50.531005859375,
+          "up_diameter": 400,
+          "up_span_pct": 400.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "할인율",
+          "down_threshold_pct": -55.71166992187499,
+          "down_diameter": 400,
+          "down_span_pct": -90.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 400.0,
+          "up_bound_reason": null
+        },
+        {
+          "variable": "연간 가동시간",
+          "down_threshold_pct": null,
+          "down_diameter": null,
+          "down_span_pct": -90.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 0.0,
+          "up_bound_reason": "연 8,760 h"
+        },
+        {
+          "variable": "펌프효율",
+          "down_threshold_pct": -33.5693359375,
+          "down_diameter": 400,
+          "down_span_pct": -50.0,
+          "up_threshold_pct": null,
+          "up_diameter": null,
+          "up_span_pct": 25.0,
+          "up_bound_reason": "η ≤ 1"
+        }
+      ]
+    }
+  },
+  "earthwork_report_xlsx": [
+    39116.1285566681,
+    39116.1285566681,
+    0,
+    0,
+    16273.6879105494
+  ],
+  "hw_coefficient": 10.666
+}
