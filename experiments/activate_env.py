@@ -31,6 +31,15 @@ from pathlib import Path
 
 import win32com.client as w32
 
+# 2026-08-19 추가: 한글 Windows 콘솔은 기본이 cp949 라, 아래 출력에 쓰이는
+# em-dash 나 경고 기호 하나 때문에 UnicodeEncodeError 로 스크립트가 즉사한다.
+# (setup_check.py 에서 같은 결함을 고쳤으나 실험 스크립트에는 남아 있었다.)
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:                                          # noqa: BLE001
+        pass
+
 # 하위 프로세스(표식 스크립트)의 출력과 순서가 뒤섞이지 않게 줄 단위로 흘린다.
 try:
     sys.stdout.reconfigure(line_buffering=True)

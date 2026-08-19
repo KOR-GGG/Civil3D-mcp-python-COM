@@ -54,6 +54,15 @@ load_dotenv(REPO / ".env", override=True)
 
 import anthropic  # noqa: E402  (키를 먼저 로드해야 한다)
 
+# 2026-08-19 추가: 한글 Windows 콘솔은 기본이 cp949 라, 아래 출력에 쓰이는
+# em-dash 나 경고 기호 하나 때문에 UnicodeEncodeError 로 스크립트가 즉사한다.
+# (setup_check.py 에서 같은 결함을 고쳤으나 실험 스크립트에는 남아 있었다.)
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:                                          # noqa: BLE001
+        pass
+
 # ---------------------------------------------------------------------------
 # 고정 설정 — §4.6.2 ⓑ 가 기록을 요구하는 항목
 # ---------------------------------------------------------------------------

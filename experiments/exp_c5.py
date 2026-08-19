@@ -48,6 +48,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from baseline_c_script import run_guarded                      # noqa: E402
 from civil3d_mcp.client import Civil3DClient                   # noqa: E402
 
+# 2026-08-19 추가: 한글 Windows 콘솔은 기본이 cp949 라, 아래 출력에 쓰이는
+# em-dash 나 경고 기호 하나 때문에 UnicodeEncodeError 로 스크립트가 즉사한다.
+# (setup_check.py 에서 같은 결함을 고쳤으나 실험 스크립트에는 남아 있었다.)
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:                                          # noqa: BLE001
+        pass
+
 # 환경 식별용 — 그 도면에만 있는 서피스 이름
 #
 # ⚠ 2026-08-17 수정: 환경 2 의 마커가 "원지형" 이었는데 환경 3 에도 같은 이름이

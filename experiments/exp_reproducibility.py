@@ -46,6 +46,15 @@ sys.path.insert(0, str(REPO / "src"))
 from civil3d_mcp import hydraulics_core as hc                  # noqa: E402
 from civil3d_mcp.client import Civil3DClient                   # noqa: E402
 
+# 2026-08-19 추가: 한글 Windows 콘솔은 기본이 cp949 라, 아래 출력에 쓰이는
+# em-dash 나 경고 기호 하나 때문에 UnicodeEncodeError 로 스크립트가 즉사한다.
+# (setup_check.py 에서 같은 결함을 고쳤으나 실험 스크립트에는 남아 있었다.)
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8")
+    except Exception:                                          # noqa: BLE001
+        pass
+
 N = 10
 TARGET_DRAWING_MARKER = "TEST_C_S0_GROUND"      # 환경 1 식별용
 
